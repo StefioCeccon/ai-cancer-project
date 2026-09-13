@@ -1,0 +1,10 @@
+# TotalSegmentator stack — install ONLY into .venv-segmentation via ./setup-segmentation.sh
+# Do NOT pip install this into .venv (Sybil venv).
+
+# PyTorch CPU wheels on macOS are built against NumPy 1.x — NumPy 2.x breaks torch.from_numpy().
+numpy>=1.26.4,<2.0
+
+TotalSegmentator>=2.3.0
+nibabel>=5.0.0,<6
+pydicom>=3.0.0
+Pillow>=10.0.0

@@ -1,0 +1,25 @@
+fastapi>=0.104.0
+uvicorn>=0.24.0
+Pillow>=10.0.0
+
+# Pinned to match Sybil 1.4.0 requirements (uses numpy 1.x and pydicom 2.x APIs)
+numpy==1.24.1
+pydicom==2.3.0
+
+# PyTorch CPU-only (Intel Mac — AMD GPU not supported by PyTorch on macOS)
+# Installed via --index-url in setup.sh. Sybil pins 1.13.1+cu117 (CUDA/Linux only)
+# which doesn't exist on macOS — torch 2.x CPU works fine at runtime.
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Sybil's remaining dependencies (installed manually after --no-deps Sybil install)
+imageio==2.34.1
+importlib-metadata
+tqdm==4.62.3
+pylibjpeg[all]==2.0.0
+torchio==0.18.74
+pylibjpeg==2.0.0  # without [all] extras — sub-packages require numpy>=2.0, conflicts with Sybil
+opencv-python-headless>=4.8.0  # headless only — server env, no display; 4.5.4 incompatible with numpy 1.24 on Python 3.10
+
+# Sybil itself — not on PyPI, installed from GitHub with --no-deps in setup.sh:
+#   pip install git+https://github.com/reginabarzilaygroup/Sybil.git --no-deps

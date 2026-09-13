@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1779558529122,
+      "tag": "0000_tense_warbound",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779600000000,
+      "tag": "0002_clinical_specialty",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779700000000,
+      "tag": "0003_symptoms_therapies",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781424037927,
+      "tag": "0004_wandering_iceman",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781721436378,
+      "tag": "0005_melodic_martin_li",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781883760630,
+      "tag": "0006_add_users_and_user_scoping",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781902704828,
+      "tag": "0007_enforce_user_id_not_null",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781989995453,
+      "tag": "0008_conscious_baron_zemo",
+      "breakpoints": true
+    }
+  ]
+}

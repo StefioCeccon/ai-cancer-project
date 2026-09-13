@@ -1,0 +1,4 @@
+# Keep Sybil-compatible pins when installing optional segmentation deps.
+# Used by setup-segmentation.sh — do not loosen without re-testing Sybil.
+numpy==1.24.1
+pydicom==2.3.0

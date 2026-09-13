@@ -1,0 +1,20 @@
+apps/ml-service/.venv/
+apps/ml-service/.venv-segmentation/
+node_modules/
+# Secrets — keep all real env files out, but track .env.example
+.env
+.env*.local
+.next/
+public/uploads/
+*.tsbuildinfo
+.turbo/
+__pycache__/
+*.pyc
+
+# Internal planning (keep private)
+LAUNCH_PLAN.md
+IMAGING_ANALYSIS_PLAN.md
+
+# Local tooling / caches
+.claude/
+.pnpm-store/
