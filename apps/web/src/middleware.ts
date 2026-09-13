@@ -16,6 +16,13 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Clerk's Vercel auto-proxy serves /__clerk/* (including *.js). Never protect
+  // or locale-rewrite those — the SDK handles them before this callback when
+  // possible; if we reach here, pass through.
+  if (req.nextUrl.pathname.startsWith("/__clerk")) {
+    return;
+  }
+
   if (!isPublicRoute(req)) {
     await auth.protect();
   }
@@ -30,6 +37,11 @@ export default clerkMiddleware(async (auth, req) => {
 });
 
 export const config = {
-  // Run on all routes except Next internals and static files, plus all API routes.
-  matcher: ["/((?!_next|_vercel|.*\\..*).*)", "/(api|trpc)(.*)"],
+  // Default matcher skips paths with a "." (static files). Clerk's /__clerk
+  // proxy must still run for assets like clerk.browser.js — list it explicitly.
+  matcher: [
+    "/((?!_next|_vercel|.*\\..*).*)",
+    "/(api|trpc)(.*)",
+    "/__clerk/(.*)",
+  ],
 };
