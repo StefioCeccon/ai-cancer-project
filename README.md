@@ -5,11 +5,18 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](../../issues)
 
-**Self-hostable tools for people living with cancer — and for the builders who want to help.**
+**Help patients and carers keep cancer data in one place — import it easily, interpret it with AI agents, and bring it ready to show specialists.**
 
-As life expectancy grows longer for many cancer diagnoses, being able to understand, follow, and organise your own medical data becomes essential. Open Cancer AI Project gives patients and caregivers a place to gather reports, track blood markers and imaging over time, and explore AI insight from specialist agents and imaging models — on your machine, with your keys, under your control.
+If you’re living with cancer — or caring for someone who is — the paperwork piles up: blood tests, letters, CDs of **CT and X-ray** scans. I couldn’t find a **non-commercial** tool that even let me **open and navigate** those scans properly, let alone help interpret them or keep labs and imaging together over time. Top hospitals run **MDT (multi-disciplinary team)** meetings where specialists sit down and discuss the patient; most families never get that room.
 
-This is a **community project**. The [live demo](https://open-cancer-ai-project-web.vercel.app) is the discovery hook; self-hosting is the default for privacy. We need clinicians, patients, designers, and engineers to shape what comes next.
+**Open Cancer AI Project** is built around one flow:
+
+1. **Import** — photo or PDF of labs/reports on the go; upload DICOM imaging  
+2. **Keep track** — everything in one timeline you control  
+3. **Interpret** — AI agents (MDT-style) and imaging models help make sense of it  
+4. **Show up prepared** — walk into clinic with history, trends, and notes in one place  
+
+Self-host for privacy, or try the [live demo](https://open-cancer-ai-project-web.vercel.app). Community project — patients, carers, clinicians, and builders welcome.
 
 > **Not medical advice.** AI output is analytical support, not a diagnosis. Always work with qualified clinicians. See [Medical Disclaimer](#medical-disclaimer).
 
@@ -33,50 +40,54 @@ cd open-cancer-ai-project
 
 ## Features
 
-What works today:
+Mapped to that flow — **import → track → interpret → show specialists**.
 
-| Area | Details |
-|------|---------|
-| **Patients** | Profiles with diagnosis context; each signed-in account owns its own data |
-| **Imaging** | DICOM upload (`.dcm` / `.zip`), interactive cornerstone3D viewer, R2 or local storage |
-| **Blood tests** | PDF/CSV or manual entry; marker trends (CEA, CA 19-9, CBC, …) |
-| **Reports** | Visit notes, pathology, radiology; PDF text extraction |
-| **MDT consultation** | Multi-specialist AI panel discusses the case; oncologist synthesises |
-| **AI analysis** | Progression, biomarkers, imaging, risk, next steps — Gemini, OpenAI, Anthropic, Mistral |
-| **Bring your own keys** | Settings → encrypt API keys at rest; env keys for self-host / demo |
-| **Auth** | Clerk sign-in / sign-up |
-| **i18n** | English · Italian · Spanish · French · German |
-| **Local ML (optional)** | Sybil lung-cancer risk on CT via `apps/ml-service` (self-host / Docker profile) |
+| | |
+|---|---|
+| **Import on the go** | Phone photo or PDF of **blood tests** and **reports** → AI extracts markers, dates, and text. No retyping hospital printouts. |
+| **One place for everything** | Labs, therapies, symptoms, letters, and imaging on **one patient timeline** — ready to review before an appointment or share on screen with a clinician. |
+| **CT / X-ray you can actually open** | Full DICOM viewer (scroll, navigate studies). Built because non-commercial options to *read* scans — not just archive a zip — were essentially missing. |
+| **Imaging AI + Sybil** | Vision models on studies / flagged slices; optional local **Sybil** (MIT/MGH) for 1–6 year lung-cancer risk and attention maps. Self-host keeps pixels on your machine. |
+| **MDT agent panel** | Like a hospital MDT: specialist agents review in parallel, **debate over multiple rounds**, oncologist synthesises — then you can ask follow-ups. Insight to discuss *with* your care team, not instead of them. |
+| **Longitudinal AI analysis** | Progression, biomarkers, imaging, treatment response, risk, next steps — Gemini, OpenAI, Anthropic, or Mistral (your keys or the demo’s). |
+| **Private by design** | Self-host or demo sandbox. Encrypted bring-your-own API keys. Sharing with family / carers / doctors is on the roadmap. |
+| **Multilingual** | English · Italian · Spanish · French · German. |
+
+> Still **not a diagnosis**. Agents and models are decision-support for discussion with clinicians.
 
 **Planned (help wanted)**
 
-- **Shared patients** — invite a family member, carer, or clinician to the same patient record (roles: owner / viewer / collaborator)
+- **Verify Docker Compose** — smoke-test `docker compose up` and report results ([CONTRIBUTING](CONTRIBUTING.md))
+- **Shared patients** — invite family, carer, or clinician (owner / viewer / collaborator)
+- **Responsive UI + mobile app** — better phones/tablets first; path toward a native or Expo app (shared `packages/shared` is already monorepo-ready)
 - Screenshots + demo GIF in the README
-- Broader provider support (e.g. Ollama for fully offline LLMs)
-- More locales and clinical copy review
+- Broader providers (e.g. Ollama offline) and more locales
 
 ---
 
 ## Why this exists
 
-- **Patient-owned data** — labs, imaging, and reports in one place you control  
-- **Self-host first** — privacy is the product  
-- **Source available** — inspect the prompts, the agents, the DICOM pipeline (noncommercial license)  
-- **Built in public** — issues and PRs decide what ships next  
+- **Patients and carers** need one home for messy real-world medical files  
+- **Import should be easy** — camera and PDF, not manual spreadsheets  
+- **Imaging shouldn’t be a black box** — navigate CT/X-ray without a commercial viewer license  
+- **Interpretation with AI agents** — MDT-shaped discussion you can run yourself, then take to specialists  
+- **Self-host / noncommercial** — privacy first; source available under PolyForm Noncommercial  
+- **Built in public** — issues and PRs welcome
 
 ---
 
 ## Contributing
 
-You do not need to be an ML engineer to help.
+You do not need to be an ML engineer to help. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup and good first issues (including Docker smoke-testing).
 
 **High-impact ways to contribute**
-- Patient / clinician UX feedback and medical wording
+- Smoke-test Docker self-host and file issues with logs
+- **Responsive layout / mobile app** (Expo path via `packages/shared`)
+- Patient / carer / clinician UX feedback and medical wording
 - Accessibility and i18n
-- Tests, docs, Docker polish
 - Agents (literature, trials, specialty prompts)
 - Imaging / DICOM UX
-- Security and tenancy review — including **shared-patient** design
+- Security and tenancy — including **shared-patient** design
 
 **How to start**
 1. Browse [open issues](../../issues)  
@@ -112,6 +123,8 @@ docker compose --env-file .env.docker --profile ml up --build
 ```
 
 Uploads persist in a Docker volume. For production self-host, put a reverse proxy (Caddy/nginx) in front and use your own domain in Clerk.
+
+> **Help wanted:** this stack is ready to try but not yet fully smoke-tested end-to-end by the maintainer. If you run it successfully (or hit a wall), please [open an issue](../../issues) — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
