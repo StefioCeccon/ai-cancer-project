@@ -148,8 +148,9 @@ const DEMO_ANALYSIS: AnalysisResult = {
 
 /**
  * Populate a brand-new user's account with a fictional demo patient and data so
- * the product looks alive on first load. Idempotent: skips if the user already
- * has a patient. Intended to run once on first sign-in when demo mode is on.
+ * the product looks alive on first load. Idempotent for the patient row; if the
+ * patient exists but imaging is missing (partial prior seed failure), backfills
+ * the shared NLST CT. Intended when `NEXT_PUBLIC_DEMO_MODE` is on.
  */
 export async function seedDemoForUser(userId: string): Promise<void> {
   const existing = await db
@@ -157,7 +158,17 @@ export async function seedDemoForUser(userId: string): Promise<void> {
     .from(patients)
     .where(eq(patients.userId, userId))
     .limit(1);
-  if (existing.length > 0) return;
+
+  if (existing.length > 0) {
+    const existingImaging = await db
+      .select({ id: imagingStudies.id })
+      .from(imagingStudies)
+      .where(eq(imagingStudies.userId, userId))
+      .limit(1);
+    if (existingImaging.length > 0) return;
+    await seedDemoImaging(userId, existing[0].id);
+    return;
+  }
 
   const [patient] = await db
     .insert(patients)
@@ -268,14 +279,16 @@ export async function seedDemoForUser(userId: string): Promise<void> {
     completedAt: new Date(),
   });
 
-  // Imaging: a shared, de-identified chest CT. We insert per-user study/series/
-  // instance rows, but every instance.filePath references the SAME R2 objects, so
-  // no DICOM bytes are duplicated and nothing needs re-uploading.
+  await seedDemoImaging(userId, patient.id);
+}
+
+/** Shared NLST chest CT — DB rows per user, one set of R2 objects for everyone. */
+async function seedDemoImaging(userId: string, patientId: string): Promise<void> {
   const [study] = await db
     .insert(imagingStudies)
     .values({
       userId,
-      patientId: patient.id,
+      patientId,
       modality: demoImaging.study.modality as Modality,
       studyDate: demoImaging.study.studyDate,
       bodyPart: demoImaging.study.bodyPart,
@@ -306,6 +319,10 @@ export async function seedDemoForUser(userId: string): Promise<void> {
         filePath: i.filePath,
       }));
 
-    if (rows.length > 0) await db.insert(imagingInstances).values(rows);
+    // Batch inserts — a single 150-row insert can time out on cold serverless DBs.
+    const BATCH = 50;
+    for (let i = 0; i < rows.length; i += BATCH) {
+      await db.insert(imagingInstances).values(rows.slice(i, i + BATCH));
+    }
   }
 }

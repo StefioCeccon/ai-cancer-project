@@ -67,16 +67,15 @@ export const getUserIdentity = cache(async (): Promise<UserIdentity | null> => {
       where: eq(users.clerkUserId, clerkUserId),
     });
     if (!row) throw new Error("Failed to resolve user after insert");
+  }
 
-    // On the public demo, give brand-new accounts a populated sandbox so the
-    // product looks alive on first load. Idempotent and failure-tolerant.
-    if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
-      try {
-        const { seedDemoForUser } = await import("@/lib/demo/seedDemoForUser");
-        await seedDemoForUser(row.id);
-      } catch (e) {
-        console.error("[demo] seedDemoForUser failed", e);
-      }
+  // Demo mode: seed (or backfill missing imaging) for this account. Idempotent.
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+    try {
+      const { seedDemoForUser } = await import("@/lib/demo/seedDemoForUser");
+      await seedDemoForUser(row.id);
+    } catch (e) {
+      console.error("[demo] seedDemoForUser failed", e);
     }
   }
 
