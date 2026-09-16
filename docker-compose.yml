@@ -1,0 +1,82 @@
+# Open Cancer AI Project — local / self-host stack
+#
+#   cp .env.docker.example .env.docker   # fill Clerk + AI keys
+#   docker compose --env-file .env.docker up --build
+#
+# Optional Sybil ML service (large image):
+#   docker compose --env-file .env.docker --profile ml up --build
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cancer
+      POSTGRES_PASSWORD: cancer
+      POSTGRES_DB: cancer_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cancer -d cancer_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://cancer:cancer@postgres:5432/cancer_ai
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: runner
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://cancer:cancer@postgres:5432/cancer_ai
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in
+      NEXT_PUBLIC_CLERK_SIGN_UP_URL: /sign-up
+      NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: /dashboard
+      NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: /dashboard
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      API_KEY_ENCRYPTION_SECRET: ${API_KEY_ENCRYPTION_SECRET:-}
+      ML_SERVICE_URL: ${ML_SERVICE_URL:-http://ml:8001}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+    volumes:
+      - uploads:/app/apps/web/public/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  ml:
+    profiles: ["ml"]
+    build:
+      context: .
+      dockerfile: apps/ml-service/Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - uploads:/data/uploads:ro
+
+volumes:
+  pgdata:
+  uploads:

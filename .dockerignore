@@ -1,0 +1,20 @@
+# Open Cancer AI Project — Docker ignore (build context = repo root)
+.git
+.github
+.claude
+.pnpm-store
+node_modules
+**/node_modules
+**/.next
+**/__pycache__
+**/.venv
+**/.venv-segmentation
+apps/ml-service/.venv
+apps/ml-service/.venv-segmentation
+apps/web/public/uploads
+**/.env
+**/.env*.local
+LAUNCH_PLAN.md
+IMAGING_ANALYSIS_PLAN.md
+*.md
+!README.md

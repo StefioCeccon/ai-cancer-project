@@ -4,6 +4,7 @@ node_modules/
 # Secrets — keep all real env files out, but track .env.example
 .env
 .env*.local
+.env.docker
 .next/
 public/uploads/
 *.tsbuildinfo
