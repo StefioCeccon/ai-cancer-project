@@ -1,6 +1,6 @@
 # AI Cancer Project
 
-[Live Demo](https://aicancerproject.vercel.app)
+[Live Demo](https://aicancerproject.com)
 [License: PolyForm Noncommercial](LICENSE)
 [Next.js](https://nextjs.org/)
 [PRs Welcome](../../issues)
@@ -12,11 +12,11 @@ If you’re living with cancer — or caring for someone who is — the paperwor
 **AI Cancer Project** is built around one flow:
 
 1. **Import** — photo or PDF of labs/reports on the go; upload DICOM imaging
-2. **Keep track** — labs, therapies, symptoms, and imaging on one timeline you control
+2. **Keep track** — everything in one timeline you control
 3. **Interpret** — AI agents (MDT-style); vision models analyse CT/X-ray and help spot findings
 4. **Show up prepared** — walk into clinic with history, trends, and notes in one place
 
-Self-host for privacy, or try the [live demo](https://aicancerproject.vercel.app). Community project — patients, carers, clinicians, and builders welcome.
+Self-host for privacy, or try the [live demo](https://aicancerproject.com). Community project — patients, carers, clinicians, and builders welcome.
 
 > **Not medical advice.** AI output is analytical support, not a diagnosis. Always work with qualified clinicians. See [Medical Disclaimer](#medical-disclaimer).
 
@@ -27,7 +27,7 @@ Self-host for privacy, or try the [live demo](https://aicancerproject.vercel.app
 
 |                      |                                                                                                                                                                          |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Live demo**        | [aicancerproject.vercel.app](https://aicancerproject.vercel.app) — sign up, explore seeded sample data, run AI / MDT with a server key or your own |
+| **Live demo**        | [aicancerproject.com](https://aicancerproject.com) — sign up, explore seeded sample data, run AI / MDT with a server key or your own |
 | **Docker self-host** | [Self-host with Docker](#self-host-with-docker) — one compose stack                                                                                                      |
 | **Manual self-host** | [Setup Guide](#setup-guide)                                                                                                                                              |
 | **Contribute**       | [Contributing](#contributing)                                                                                                                                            |
@@ -48,8 +48,7 @@ Mapped to that flow — **import → track → interpret → show specialists**.
 |                                      |                                                                                                                                                                                                                  |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Import on the go**                 | Phone photo or PDF of **blood tests** and **reports** → AI extracts markers, dates, and text. No retyping hospital printouts.                                                                                    |
-| **Therapies tracking**               | Log chemo, radiation, surgery, immunotherapy, and other treatments — dates, notes, and status — so regimens sit on the same timeline as labs and scans.                                                          |
-| **One place for everything**         | Labs, therapies, symptoms, letters, and imaging on **one patient timeline** — ready to review before an appointment or show on screen to a clinician.                                                            |
+| **One place for everything**         | Labs, symptoms, letters, and imaging on **one patient timeline** — ready to review before an appointment or show on screen to a clinician.                                                            |
 | **CT / X-ray you can actually open** | Full DICOM viewer (scroll, navigate studies). Built because non-commercial options to *read* scans — not just archive a zip — were essentially missing.                                                          |
 | **AI on CT & X-ray**                 | Vision models **analyse your scans**, help **spot findings** on studies or flagged slices, and turn them into readable notes. Optional local **Sybil** (MIT/MGH): 1–6 year lung-cancer risk + attention maps. Self-host keeps pixels on your machine. |
 | **MDT agent panel**                  | Like a hospital MDT: specialist agents review in parallel, **debate over multiple rounds**, oncologist synthesises — then you can ask follow-ups. Insight to discuss *with* your care team, not instead of them. |
@@ -75,7 +74,6 @@ Mapped to that flow — **import → track → interpret → show specialists**.
 - **Patients and carers** need one home for messy real-world medical files  
 - **Import should be easy** — camera and PDF, not manual spreadsheets  
 - **Imaging shouldn’t be a black box** — navigate CT/X-ray without a commercial viewer, and use AI to help analyse and surface possible findings  
-- **Therapies belong with the data** — track treatments next to markers and scans, not in a separate notebook  
 - **Interpretation with AI agents** — MDT-shaped discussion you can run yourself, then take to specialists  
 - **Self-host / noncommercial** — privacy first; source available under PolyForm Noncommercial  
 - **Built in public** — issues and PRs welcome
@@ -225,7 +223,7 @@ cd apps/ml-service
 4. Run **AI analysis** or **MDT**; optionally **Sybil** if the ML service is up
 5. Add your own provider keys under **Settings**
 
-On the [live demo](https://aicancerproject.vercel.app), a sample NSCLC patient (including a public NLST chest CT) is seeded automatically.
+On the [live demo](https://aicancerproject.com), a sample NSCLC patient (including a public NLST chest CT) is seeded automatically.
 
 ---
 
@@ -255,7 +253,7 @@ The public demo runs on Vercel + Neon + Cloudflare R2 + Clerk.
 3. Run `pnpm db:migrate` against the production database once
 4. Add the Vercel origin to the R2 bucket CORS policy
 
-Live: [https://aicancerproject.vercel.app](https://aicancerproject.vercel.app)
+Live: [https://aicancerproject.com](https://aicancerproject.com)
 
 ---
 
