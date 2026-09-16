@@ -1,4 +1,5 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { after } from "next/server";
 import { cache } from "react";
 import { randomUUID } from "crypto";
 import { and, eq, isNull } from "drizzle-orm";
@@ -69,14 +70,20 @@ export const getUserIdentity = cache(async (): Promise<UserIdentity | null> => {
     if (!row) throw new Error("Failed to resolve user after insert");
   }
 
-  // Demo mode: seed (or backfill missing imaging) for this account. Idempotent.
-  if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
-    try {
-      const { seedDemoForUser } = await import("@/lib/demo/seedDemoForUser");
-      await seedDemoForUser(row.id);
-    } catch (e) {
-      console.error("[demo] seedDemoForUser failed", e);
-    }
+  // Demo seed in after() so /api/imaging is not blocked, and Vercel keeps the
+  // work alive after the response (plain void promises get killed).
+  const demoMode =
+    process.env.DEMO_MODE === "true" || process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  if (demoMode) {
+    const userId = row.id;
+    after(async () => {
+      try {
+        const { seedDemoForUser } = await import("@/lib/demo/seedDemoForUser");
+        await seedDemoForUser(userId);
+      } catch (e) {
+        console.error("[demo] seedDemoForUser failed", e);
+      }
+    });
   }
 
   // Self-healing: while the flag is on, adopt any still-orphaned rows on every
