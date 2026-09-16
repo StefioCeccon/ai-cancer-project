@@ -296,7 +296,7 @@ async function seedDemoImaging(userId: string, patientId: string): Promise<void>
       seriesCount: demoImaging.study.seriesCount,
       instanceCount: demoImaging.study.instanceCount,
     })
-    .returning();
+    .returning({ id: imagingStudies.id });
 
   for (const s of demoImaging.series) {
     const [series] = await db
@@ -308,7 +308,7 @@ async function seedDemoImaging(userId: string, patientId: string): Promise<void>
         modality: s.modality as Modality,
         instanceCount: s.instanceCount,
       })
-      .returning();
+      .returning({ id: imagingSeries.id });
 
     const rows = demoImaging.instances
       .filter((i) => i.seriesNumber === s.seriesNumber)

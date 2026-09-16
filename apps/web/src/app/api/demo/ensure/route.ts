@@ -61,10 +61,18 @@ export async function POST() {
     });
   } catch (e) {
     console.error("[demo] /api/demo/ensure failed", e);
+    const err = e as Error & { cause?: unknown };
+    const cause =
+      err.cause instanceof Error
+        ? err.cause.message
+        : err.cause
+          ? String(err.cause)
+          : undefined;
     return NextResponse.json(
       {
         ok: false,
-        error: e instanceof Error ? e.message : String(e),
+        error: err instanceof Error ? err.message : String(e),
+        cause,
       },
       { status: 500 },
     );
