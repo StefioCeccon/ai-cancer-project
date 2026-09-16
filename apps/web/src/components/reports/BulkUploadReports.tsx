@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import type { ReportType } from "@cancer-monitor/shared";
+import type { ReportType } from "@ai-cancer-project/shared";
 import type { ParsedReportMetadata } from "@/lib/upload/parseReportFile";
 import {
   autoGroupFiles,

@@ -1,4 +1,4 @@
-import type { AnalysisType, MDTSpecialistRole, MDTFollowUpRound } from "@cancer-monitor/shared";
+import type { AnalysisType, MDTSpecialistRole, MDTFollowUpRound } from "@ai-cancer-project/shared";
 
 // ─── MDT Specialist Prompts ───────────────────────────────────────────────────
 

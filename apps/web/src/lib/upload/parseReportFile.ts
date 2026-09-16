@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { ReportType } from "@cancer-monitor/shared";
+import type { ReportType } from "@ai-cancer-project/shared";
 import { extractDocumentText } from "./extractDocumentText";
 import { resolveProviderKey } from "@/lib/ai/keys";
 

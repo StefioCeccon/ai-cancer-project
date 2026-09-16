@@ -1,4 +1,4 @@
-import type { AIProvider } from "@cancer-monitor/shared";
+import type { AIProvider } from "@ai-cancer-project/shared";
 import type { AIProvider_Interface } from "./types";
 import { GeminiProvider } from "./providers/gemini";
 import { OpenAIProvider } from "./providers/openai";

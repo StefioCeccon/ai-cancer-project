@@ -17,7 +17,7 @@ import {
 import type { Symptom, BloodMarker, BloodTest, MedicalReport, ImagingStudy, AnalysisRun } from "@/lib/db/schema";
 import { runMDTConsultation } from "@/lib/ai/consultation";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
-import type { MDTDocument, MDTSSEEvent, AIProvider } from "@cancer-monitor/shared";
+import type { MDTDocument, MDTSSEEvent, AIProvider } from "@ai-cancer-project/shared";
 
 const schema = z.object({
   patientId: z.string().uuid(),

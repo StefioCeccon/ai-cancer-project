@@ -1,4 +1,4 @@
-# Open Cancer AI Project — local / self-host stack
+# AI Cancer Project — local / self-host stack
 #
 #   cp .env.docker.example .env.docker   # fill Clerk + AI keys
 #   docker compose --env-file .env.docker up --build

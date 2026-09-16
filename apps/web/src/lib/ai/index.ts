@@ -2,7 +2,7 @@ export * from "./types";
 export * from "./registry";
 export * from "./prompts";
 
-import type { AnalysisResult, AIProvider } from "@cancer-monitor/shared";
+import type { AnalysisResult, AIProvider } from "@ai-cancer-project/shared";
 import { getProvider } from "./registry";
 import { ONCOLOGY_SYSTEM_PROMPT, buildAnalysisPrompt } from "./prompts";
 import type { OncologyAnalysisRequest } from "./types";

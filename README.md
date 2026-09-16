@@ -1,4 +1,4 @@
-# Open Cancer AI Project
+# AI Cancer Project
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Try%20it-0B6E4F?style=for-the-badge)](https://open-cancer-ai-project-web.vercel.app)
 [![License: PolyForm Noncommercial](https://img.shields.io/badge/License-PolyForm%20Noncommercial-blue.svg)](LICENSE)
@@ -9,7 +9,7 @@
 
 If you’re living with cancer — or caring for someone who is — the paperwork piles up: blood tests, letters, CDs of **CT and X-ray** scans. I couldn’t find a **non-commercial** tool that even let me **open and navigate** those scans properly, let alone help interpret them or keep labs and imaging together over time. Top hospitals run **MDT (multi-disciplinary team)** meetings where specialists sit down and discuss the patient; most families never get that room.
 
-**Open Cancer AI Project** is built around one flow:
+**AI Cancer Project** is built around one flow:
 
 1. **Import** — photo or PDF of labs/reports on the go; upload DICOM imaging  
 2. **Keep track** — everything in one timeline you control  
@@ -32,8 +32,8 @@ Self-host for privacy, or try the [live demo](https://open-cancer-ai-project-web
 | **Contribute** | [Contributing](#contributing) |
 
 ```bash
-git clone https://github.com/StefioCeccon/open-cancer-ai-project.git
-cd open-cancer-ai-project
+git clone https://github.com/StefioCeccon/ai-cancer-project.git
+cd ai-cancer-project
 ```
 
 ---
@@ -148,15 +148,15 @@ Uploads persist in a Docker volume. For production self-host, put a reverse prox
 ### 1. Node version
 
 ```bash
-cd open-cancer-ai-project
+cd ai-cancer-project
 nvm use          # Node 20 from .nvmrc
 ```
 
 ### 2. Clone and install
 
 ```bash
-git clone https://github.com/StefioCeccon/open-cancer-ai-project.git
-cd open-cancer-ai-project
+git clone https://github.com/StefioCeccon/ai-cancer-project.git
+cd ai-cancer-project
 nvm use
 pnpm install
 ```
@@ -219,7 +219,7 @@ On the [live demo](https://open-cancer-ai-project-web.vercel.app), a sample NSCL
 ## Project Structure
 
 ```
-open-cancer-ai-project/
+ai-cancer-project/
 ├── apps/
 │   ├── web/              # Next.js app (UI + API + Drizzle)
 │   └── ml-service/       # Local FastAPI + Sybil / segmentation

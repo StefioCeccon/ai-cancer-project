@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { MarkdownContent } from "@/components/ui/MarkdownContent";
 import { usePatient } from "@/contexts/PatientContext";
-import type { MDTSpecialistRole, MDTSSEEvent, AIProvider } from "@cancer-monitor/shared";
+import type { MDTSpecialistRole, MDTSSEEvent, AIProvider } from "@ai-cancer-project/shared";
 
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 

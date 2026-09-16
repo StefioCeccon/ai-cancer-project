@@ -1,5 +1,5 @@
-import { AI_MODELS } from "@cancer-monitor/shared";
-import type { AnalysisType } from "@cancer-monitor/shared";
+import { AI_MODELS } from "@ai-cancer-project/shared";
+import type { AnalysisType } from "@ai-cancer-project/shared";
 
 export interface ReportContextItem {
   id: string;

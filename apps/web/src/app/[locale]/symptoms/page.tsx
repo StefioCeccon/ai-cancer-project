@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { UploadSymptom } from "@/components/symptoms/UploadSymptom";
 import { BloodTestSourceFiles } from "@/components/blood-tests/BloodTestSourceFiles";
-import { formatDate } from "@cancer-monitor/shared";
-import type { Symptom, SymptomSeverity } from "@cancer-monitor/shared";
+import { formatDate } from "@ai-cancer-project/shared";
+import type { Symptom, SymptomSeverity } from "@ai-cancer-project/shared";
 import { usePatient } from "@/contexts/PatientContext";
 
 const SEVERITY_VARIANT: Record<SymptomSeverity, "neutral" | "warning" | "danger"> = {

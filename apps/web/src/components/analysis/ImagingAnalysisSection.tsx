@@ -6,7 +6,7 @@ import { Scan, Cpu, Sparkles, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MarkdownContent } from "@/components/ui/MarkdownContent";
-import { formatDate } from "@cancer-monitor/shared";
+import { formatDate } from "@ai-cancer-project/shared";
 
 interface ImagingStudySummary {
   id: string;

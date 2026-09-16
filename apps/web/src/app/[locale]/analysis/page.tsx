@@ -11,8 +11,8 @@ import { AnalysisPanel } from "@/components/analysis/AnalysisPanel";
 import { ImagingAnalysisSection } from "@/components/analysis/ImagingAnalysisSection";
 import { StrategyCard } from "@/components/analysis/StrategyCard";
 import type { StrategyRecommendation } from "@/components/analysis/StrategyCard";
-import { formatDate } from "@cancer-monitor/shared";
-import type { AIProvider, AnalysisType, AnalysisResult } from "@cancer-monitor/shared";
+import { formatDate } from "@ai-cancer-project/shared";
+import type { AIProvider, AnalysisType, AnalysisResult } from "@ai-cancer-project/shared";
 import { usePatient } from "@/contexts/PatientContext";
 import type {
   ReportContextItem,

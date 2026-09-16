@@ -36,7 +36,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "welcome": "Cancer Monitor",
+    "welcome": "AI Cancer Project",
     "subtitle": "Piattaforma oncologica multimodale",
     "totalPatients": "Pazienti Totali",
     "recentScans": "Scansioni Recenti",

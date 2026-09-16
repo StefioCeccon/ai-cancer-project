@@ -1,5 +1,5 @@
-import { classifyMarkerStatus } from "@cancer-monitor/shared";
-import type { MarkerStatus } from "@cancer-monitor/shared";
+import { classifyMarkerStatus } from "@ai-cancer-project/shared";
+import type { MarkerStatus } from "@ai-cancer-project/shared";
 import type { ParsedBloodMarker } from "./parseBloodTestFile";
 
 function toNumber(value: unknown): number | undefined {

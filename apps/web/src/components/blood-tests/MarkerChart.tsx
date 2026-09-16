@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { formatDateShort } from "@cancer-monitor/shared";
+import { formatDateShort } from "@ai-cancer-project/shared";
 
 interface MarkerDataPoint {
   date: string;

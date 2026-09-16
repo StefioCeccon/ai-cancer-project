@@ -1,5 +1,5 @@
 {
-  "name": "@cancer-monitor/shared",
+  "name": "@ai-cancer-project/shared",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",

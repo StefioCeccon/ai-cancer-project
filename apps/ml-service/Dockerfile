@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Optional Sybil / ML service. Large image (PyTorch). Build from repo root:
-#   docker build -f apps/ml-service/Dockerfile -t open-cancer-ai-ml .
+#   docker build -f apps/ml-service/Dockerfile -t ai-cancer-project-ml .
 
 FROM python:3.10-slim AS base
 WORKDIR /app

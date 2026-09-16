@@ -7,8 +7,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { usePatient } from "@/contexts/PatientContext";
-import { CANCER_TYPES, CANCER_STAGES } from "@cancer-monitor/shared";
-import type { PatientCreate } from "@cancer-monitor/shared";
+import { CANCER_TYPES, CANCER_STAGES } from "@ai-cancer-project/shared";
+import type { PatientCreate } from "@ai-cancer-project/shared";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50";

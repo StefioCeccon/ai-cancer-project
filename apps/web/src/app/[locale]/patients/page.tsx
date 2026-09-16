@@ -5,7 +5,7 @@ import { UserPlus } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import type { Patient } from "@cancer-monitor/shared";
+import type { Patient } from "@ai-cancer-project/shared";
 
 async function fetchPatients(): Promise<Patient[]> {
   try {

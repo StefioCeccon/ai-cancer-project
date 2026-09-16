@@ -6,8 +6,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Badge } from "@/components/ui/Badge";
-import { formatDate } from "@cancer-monitor/shared";
-import type { AnalysisType } from "@cancer-monitor/shared";
+import { formatDate } from "@ai-cancer-project/shared";
+import type { AnalysisType } from "@ai-cancer-project/shared";
 import {
   estimateAnalysisContext,
   estimateItemTokens,

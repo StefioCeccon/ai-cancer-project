@@ -1,7 +1,7 @@
 import { extractDocumentText } from "./extractDocumentText";
 import { extractStructuredJson } from "./extractStructuredJson";
 import { isSalvagedPartialJson } from "./parseJsonFromAi";
-import type { ParsedSymptomEntry, SymptomSeverity } from "@cancer-monitor/shared";
+import type { ParsedSymptomEntry, SymptomSeverity } from "@ai-cancer-project/shared";
 
 const EXTRACTION_PROMPT = `You are a medical data extraction assistant. Extract patient symptoms from the following clinical document text.
 

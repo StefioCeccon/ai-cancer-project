@@ -20,7 +20,7 @@ import {
   buildImagingAnalysisSummary,
   formatMlImagingContext,
 } from "@/lib/imaging/mlContext";
-import type { ImagingAnalysisSummary } from "@cancer-monitor/shared";
+import type { ImagingAnalysisSummary } from "@ai-cancer-project/shared";
 import type { Symptom } from "@/lib/db/schema";
 
 const createAnalysisSchema = z.object({

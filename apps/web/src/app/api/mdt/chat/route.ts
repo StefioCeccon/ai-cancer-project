@@ -6,7 +6,7 @@ import { getCurrentUserId } from "@/lib/auth/user";
 import { getProvider } from "@/lib/ai/registry";
 import { resolveProviderKey } from "@/lib/ai/keys";
 import { SPECIALIST_SYSTEM_PROMPTS, buildOncologistChatPrompt } from "@/lib/ai/prompts";
-import type { AIProvider, MDTConsultationResult } from "@cancer-monitor/shared";
+import type { AIProvider, MDTConsultationResult } from "@ai-cancer-project/shared";
 
 const schema = z.object({
   patientId:   z.string().uuid(),

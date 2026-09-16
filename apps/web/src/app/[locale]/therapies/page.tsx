@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { UploadTherapy } from "@/components/therapies/UploadTherapy";
 import { BloodTestSourceFiles } from "@/components/blood-tests/BloodTestSourceFiles";
-import { formatDate, formatDateShort } from "@cancer-monitor/shared";
-import type { Therapy, TherapyType } from "@cancer-monitor/shared";
+import { formatDate, formatDateShort } from "@ai-cancer-project/shared";
+import type { Therapy, TherapyType } from "@ai-cancer-project/shared";
 import { usePatient } from "@/contexts/PatientContext";
 
 const THERAPY_LABELS: Record<TherapyType, string> = {

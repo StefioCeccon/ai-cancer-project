@@ -11,8 +11,8 @@ import { MarkerChart } from "@/components/blood-tests/MarkerChart";
 import { UploadBloodTest } from "@/components/blood-tests/UploadBloodTest";
 import { BulkUploadBloodTests } from "@/components/blood-tests/BulkUploadBloodTests";
 import { BloodTestSourceFiles } from "@/components/blood-tests/BloodTestSourceFiles";
-import { formatDate } from "@cancer-monitor/shared";
-import type { BloodMarker } from "@cancer-monitor/shared";
+import { formatDate } from "@ai-cancer-project/shared";
+import type { BloodMarker } from "@ai-cancer-project/shared";
 import { usePatient } from "@/contexts/PatientContext";
 import {
   getMarkerHistoryByAliases,

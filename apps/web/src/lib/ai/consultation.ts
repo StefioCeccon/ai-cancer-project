@@ -6,7 +6,7 @@ import type {
   MDTFollowUpRound,
   MDTSSEEvent,
   AIProvider,
-} from "@cancer-monitor/shared";
+} from "@ai-cancer-project/shared";
 import { getProvider } from "./registry";
 import {
   SPECIALIST_SYSTEM_PROMPTS,

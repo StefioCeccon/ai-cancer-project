@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link2, Link2Off, Plus, FileText, ChevronDown } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { formatDate } from "@cancer-monitor/shared";
+import { formatDate } from "@ai-cancer-project/shared";
 
 interface LinkedReport {
   id: string;

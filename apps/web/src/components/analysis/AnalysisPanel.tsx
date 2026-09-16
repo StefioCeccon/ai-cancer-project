@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import type { AnalysisResult, AnalysisType, AIProvider, ProgressionAssessment, ImagingAnalysisSummary } from "@cancer-monitor/shared";
+import type { AnalysisResult, AnalysisType, AIProvider, ProgressionAssessment, ImagingAnalysisSummary } from "@ai-cancer-project/shared";
 import { MarkdownContent } from "@/components/ui/MarkdownContent";
-import { AI_MODELS } from "@cancer-monitor/shared";
+import { AI_MODELS } from "@ai-cancer-project/shared";
 import { AnalysisContextSelector, estimateAnalysisContext } from "@/components/analysis/AnalysisContextSelector";
 import type {
   ReportContextItem,

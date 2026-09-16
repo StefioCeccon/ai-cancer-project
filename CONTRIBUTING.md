@@ -1,4 +1,4 @@
-# Contributing to Open Cancer AI Project
+# Contributing to AI Cancer Project
 
 Thanks for wanting to help. This project is **source-available under a [PolyForm Noncommercial](LICENSE) license** — use and contributions are for noncommercial purposes. You do not need to be an ML engineer to contribute.
 

@@ -1,4 +1,4 @@
-import type { ImagingAnalysisSummary } from "@cancer-monitor/shared";
+import type { ImagingAnalysisSummary } from "@ai-cancer-project/shared";
 
 interface SybilMlResult {
   risk_scores?: Record<string, number>;

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, useCallback, useLayoutEffect } from "react";
 import Link from "next/link";
-import { formatDate, formatDateShort } from "@cancer-monitor/shared";
+import { formatDate, formatDateShort } from "@ai-cancer-project/shared";
 import { cn } from "@/lib/utils/cn";
 import { ReportTimelineCategoryField } from "@/components/reports/ReportTimelineCategoryField";
 import { CATEGORY_COLORS } from "@/lib/timeline/colors";

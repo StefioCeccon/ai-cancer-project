@@ -8,7 +8,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import type { AnalysisType } from "@cancer-monitor/shared";
+import type { AnalysisType } from "@ai-cancer-project/shared";
 
 export interface StrategyRecommendation {
   recommendedModels: string[];

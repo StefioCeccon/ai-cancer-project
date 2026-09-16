@@ -14,7 +14,7 @@ import { SegmentOverlayProvider } from "@/components/imaging/SegmentOverlayProvi
 import { imagingStudyHasReportContext } from "@/lib/imaging/linkedReport";
 import { sybilResultToViewerOverlay } from "@/lib/imaging/sybil";
 import { segmentationToViewerOverlay } from "@/lib/imaging/segmentation";
-import { formatDate } from "@cancer-monitor/shared";
+import { formatDate } from "@ai-cancer-project/shared";
 
 async function getStudy(id: string) {
   const headersList = await headers();

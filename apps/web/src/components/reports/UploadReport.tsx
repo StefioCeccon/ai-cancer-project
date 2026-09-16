@@ -5,7 +5,7 @@ import { useDropzone } from "react-dropzone";
 import { FileText, Upload, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
-import type { ReportType } from "@cancer-monitor/shared";
+import type { ReportType } from "@ai-cancer-project/shared";
 import type { ParsedReportMetadata } from "@/app/api/reports/parse/route";
 import { parseStoredFilePaths } from "@/lib/upload/parseStoredFilePaths";
 import { readApiError } from "@/lib/upload/readApiError";

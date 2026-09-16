@@ -2,8 +2,8 @@
 
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { markerStatusColor, markerStatusBg } from "@cancer-monitor/shared";
-import type { BloodMarker, MarkerStatus } from "@cancer-monitor/shared";
+import { markerStatusColor, markerStatusBg } from "@ai-cancer-project/shared";
+import type { BloodMarker, MarkerStatus } from "@ai-cancer-project/shared";
 
 interface MarkerTableProps {
   markers: BloodMarker[];

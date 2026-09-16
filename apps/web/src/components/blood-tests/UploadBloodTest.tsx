@@ -5,8 +5,8 @@ import { useDropzone } from "react-dropzone";
 import { FlaskConical, Plus, Trash2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
-import { classifyMarkerStatus, CANCER_MARKERS } from "@cancer-monitor/shared";
-import type { MarkerStatus } from "@cancer-monitor/shared";
+import { classifyMarkerStatus, CANCER_MARKERS } from "@ai-cancer-project/shared";
+import type { MarkerStatus } from "@ai-cancer-project/shared";
 
 interface MarkerRow {
   name: string;

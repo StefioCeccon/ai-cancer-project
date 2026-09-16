@@ -5,7 +5,7 @@ import { db, apiKeys } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/auth/user";
 import { encryptSecret, isEncryptionConfigured } from "@/lib/crypto/secrets";
 import { ALL_PROVIDERS, PROVIDER_ENV_VARS } from "@/lib/ai/keys";
-import type { AIProvider } from "@cancer-monitor/shared";
+import type { AIProvider } from "@ai-cancer-project/shared";
 
 const upsertSchema = z.object({
   provider: z.enum(["gemini", "openai", "anthropic", "mistral"]),

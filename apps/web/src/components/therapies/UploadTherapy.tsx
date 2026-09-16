@@ -5,7 +5,7 @@ import { useDropzone } from "react-dropzone";
 import { Pill, Plus, Trash2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
-import type { TherapyType } from "@cancer-monitor/shared";
+import type { TherapyType } from "@ai-cancer-project/shared";
 
 interface MedicationRow {
   name: string;

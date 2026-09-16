@@ -1,7 +1,7 @@
 import { extractDocumentText } from "./extractDocumentText";
 import { extractStructuredJson } from "./extractStructuredJson";
 import { isSalvagedPartialJson } from "./parseJsonFromAi";
-import type { ParsedTherapyEntry, TherapyType } from "@cancer-monitor/shared";
+import type { ParsedTherapyEntry, TherapyType } from "@ai-cancer-project/shared";
 
 const VALID_THERAPY_TYPES = new Set<TherapyType>([
   "chemotherapy",

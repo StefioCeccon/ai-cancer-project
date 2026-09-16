@@ -4,7 +4,7 @@ import { and, eq, desc } from "drizzle-orm";
 import { getProvider } from "@/lib/ai";
 import { getDefaultProviderForUser, resolveProviderKey } from "@/lib/ai/keys";
 import { getCurrentUserId } from "@/lib/auth/user";
-import type { AIProvider } from "@cancer-monitor/shared";
+import type { AIProvider } from "@ai-cancer-project/shared";
 
 // Builds a comprehensive context string from all patient data
 async function buildPatientContext(patientId: string, userId: string): Promise<string> {

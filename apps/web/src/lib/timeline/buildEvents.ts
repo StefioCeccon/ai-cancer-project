@@ -1,4 +1,4 @@
-import type { BloodMarker, ReportType, TherapyType } from "@cancer-monitor/shared";
+import type { BloodMarker, ReportType, TherapyType } from "@ai-cancer-project/shared";
 import type { TimelineEvent, TimelineLane, TimelineResponse } from "./types";
 import { isTimelineCategoryManual } from "./timelineCategoryOptions";
 import {

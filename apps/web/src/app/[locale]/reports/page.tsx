@@ -12,8 +12,8 @@ import { BloodTestSourceFiles } from "@/components/blood-tests/BloodTestSourceFi
 import { StoredDocumentViewer } from "@/components/upload/StoredDocumentViewer";
 import { ReportTimelineCategoryField } from "@/components/reports/ReportTimelineCategoryField";
 import { isTimelineCategoryManual } from "@/lib/timeline/timelineCategoryOptions";
-import { formatDate } from "@cancer-monitor/shared";
-import type { ReportType } from "@cancer-monitor/shared";
+import { formatDate } from "@ai-cancer-project/shared";
+import type { ReportType } from "@ai-cancer-project/shared";
 import { usePatient } from "@/contexts/PatientContext";
 import { readApiError } from "@/lib/upload/readApiError";
 

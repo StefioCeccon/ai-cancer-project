@@ -1,4 +1,4 @@
-import type { ReportType } from "@cancer-monitor/shared";
+import type { ReportType } from "@ai-cancer-project/shared";
 import type { TimelineCategory } from "./types";
 
 /** Category band colors (background tint) */

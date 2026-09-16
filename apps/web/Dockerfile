@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Build from repo root:
-#   docker build -f apps/web/Dockerfile -t open-cancer-ai-web .
+#   docker build -f apps/web/Dockerfile -t ai-cancer-project-web .
 
 FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate

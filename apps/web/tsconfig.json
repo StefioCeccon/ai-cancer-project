@@ -16,8 +16,8 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
-      "@cancer-monitor/shared": ["../../packages/shared/src/index.ts"],
-      "@cancer-monitor/shared/*": ["../../packages/shared/src/*"]
+      "@ai-cancer-project/shared": ["../../packages/shared/src/index.ts"],
+      "@ai-cancer-project/shared/*": ["../../packages/shared/src/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

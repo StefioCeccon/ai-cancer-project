@@ -60,7 +60,7 @@ export function Sidebar({ locale, labels }: SidebarProps) {
           <Activity className="w-5 h-5 text-white" />
         </div>
         <div>
-          <p className="text-white font-semibold text-sm leading-tight">Cancer Monitor</p>
+          <p className="text-white font-semibold text-sm leading-tight">AI Cancer Project</p>
           <p className="text-slate-400 text-xs">Oncology Platform</p>
         </div>
       </div>

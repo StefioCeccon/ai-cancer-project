@@ -5,7 +5,7 @@ import { useDropzone } from "react-dropzone";
 import { HeartPulse, Plus, Trash2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
-import type { SymptomSeverity } from "@cancer-monitor/shared";
+import type { SymptomSeverity } from "@ai-cancer-project/shared";
 
 interface SymptomRow {
   name: string;

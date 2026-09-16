@@ -9,8 +9,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { ChatMessage, type Message } from "./ChatMessage";
-import { AI_MODELS } from "@cancer-monitor/shared";
-import type { AIProvider } from "@cancer-monitor/shared";
+import { AI_MODELS } from "@ai-cancer-project/shared";
+import type { AIProvider } from "@ai-cancer-project/shared";
 import { usePatient } from "@/contexts/PatientContext";
 
 const SUGGESTED_QUESTIONS = [

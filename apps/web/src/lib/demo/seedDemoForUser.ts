@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { AnalysisResult } from "@cancer-monitor/shared";
+import type { AnalysisResult } from "@ai-cancer-project/shared";
 import {
   db,
   patients,

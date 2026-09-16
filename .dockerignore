@@ -1,4 +1,4 @@
-# Open Cancer AI Project — Docker ignore (build context = repo root)
+# AI Cancer Project — Docker ignore (build context = repo root)
 .git
 .github
 .claude

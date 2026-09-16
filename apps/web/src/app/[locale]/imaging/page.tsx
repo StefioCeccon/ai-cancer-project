@@ -7,7 +7,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { formatDateShort } from "@cancer-monitor/shared";
+import { formatDateShort } from "@ai-cancer-project/shared";
 import { usePatient } from "@/contexts/PatientContext";
 
 interface Study {

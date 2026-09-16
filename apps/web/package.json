@@ -15,7 +15,7 @@
     "@anthropic-ai/sdk": "^0.52.0",
     "@aws-sdk/client-s3": "^3.1073.0",
     "@aws-sdk/s3-request-presigner": "^3.1073.0",
-    "@cancer-monitor/shared": "workspace:*",
+    "@ai-cancer-project/shared": "workspace:*",
     "@clerk/nextjs": "^7.5.6",
     "@cornerstonejs/core": "^2.0.0",
     "@cornerstonejs/dicom-image-loader": "^2.0.0",

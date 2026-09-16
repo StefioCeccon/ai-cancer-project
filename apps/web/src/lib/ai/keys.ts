@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import type { AIProvider } from "@cancer-monitor/shared";
+import type { AIProvider } from "@ai-cancer-project/shared";
 import { db, apiKeys } from "@/lib/db";
 import { decryptSecret } from "@/lib/crypto/secrets";
 import { getContextUserId } from "./keyContext";

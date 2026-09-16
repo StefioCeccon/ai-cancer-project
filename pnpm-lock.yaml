@@ -19,7 +19,7 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1073.0
         version: 3.1073.0
-      '@cancer-monitor/shared':
+      '@ai-cancer-project/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@clerk/nextjs':

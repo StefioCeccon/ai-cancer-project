@@ -1,4 +1,4 @@
-import type { AnalysisResult, AnalysisType, AIProvider } from "@cancer-monitor/shared";
+import type { AnalysisResult, AnalysisType, AIProvider } from "@ai-cancer-project/shared";
 
 export interface AIMessage {
   role: "user" | "assistant" | "system";

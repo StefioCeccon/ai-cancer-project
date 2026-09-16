@@ -18,7 +18,7 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import type { Patient } from "@cancer-monitor/shared";
+import type { Patient } from "@ai-cancer-project/shared";
 
 async function fetchPatient(id: string): Promise<Patient | null> {
   try {

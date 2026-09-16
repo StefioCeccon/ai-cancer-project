@@ -1,6 +1,6 @@
 import { getProvider } from "@/lib/ai/registry";
 import { SPECIALIST_SYSTEM_PROMPTS } from "@/lib/ai/prompts";
-import type { AIProvider } from "@cancer-monitor/shared";
+import type { AIProvider } from "@ai-cancer-project/shared";
 
 interface CTStudy {
   protocolSection: {

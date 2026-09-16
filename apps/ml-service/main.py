@@ -1,5 +1,5 @@
 """
-Cancer Monitor ML Inference Service
+AI Cancer Project ML Inference Service
 Runs locally on your machine — no data leaves your network.
 Start with: ./start.sh
 """
@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Cancer Monitor ML Service",
+    title="AI Cancer Project ML Service",
     description="Local ML inference — data stays on your machine",
     version="0.1.0",
     lifespan=lifespan,
@@ -140,7 +140,7 @@ class StubResponse(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "cancer-monitor-ml"}
+    return {"status": "ok", "service": "ai-cancer-project-ml"}
 
 
 @app.post("/study/series", response_model=StudySeriesResponse)

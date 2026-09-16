@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-const STORAGE_KEY = "cancer-monitor:selected-patient-id";
+const STORAGE_KEY = "ai-cancer-project:selected-patient-id";
 
 export interface Patient {
   id: string;

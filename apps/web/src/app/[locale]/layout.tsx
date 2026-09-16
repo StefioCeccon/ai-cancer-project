@@ -8,7 +8,7 @@ import { ClientProviders } from "@/components/providers/ClientProviders";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
-  title: "Open Cancer AI Project",
+  title: "AI Cancer Project",
   description:
     "Self-hostable AI oncology platform — track blood markers and imaging over time, gather your reports, and get insight from a panel of specialist AI agents. Source available under a noncommercial license.",
 };
