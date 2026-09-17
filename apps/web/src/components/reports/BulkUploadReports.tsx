@@ -291,6 +291,7 @@ export function BulkUploadReports({ patientId, onSuccess, onCancel }: BulkUpload
           const fd = new FormData();
           fd.append("file", entry.file);
           fd.append("type", "report");
+          fd.append("patientId", patientId);
           const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
           if (!uploadRes.ok) {
             throw new Error(`Failed to upload "${entry.file.name}"`);

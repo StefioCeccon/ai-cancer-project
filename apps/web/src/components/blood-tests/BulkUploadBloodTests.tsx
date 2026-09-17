@@ -280,6 +280,7 @@ export function BulkUploadBloodTests({ patientId, onSuccess, onCancel }: BulkUpl
           const fd = new FormData();
           fd.append("file", entry.file);
           fd.append("type", "bloodtest");
+          fd.append("patientId", patientId);
           const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
           if (!uploadRes.ok) {
             throw new Error(

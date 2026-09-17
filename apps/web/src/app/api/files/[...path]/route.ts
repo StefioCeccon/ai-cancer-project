@@ -1,30 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSignedReadUrl, storageBackend } from "@/lib/storage";
+import { storageBackend, getObjectForResponse } from "@/lib/storage";
+import { getCurrentUserId } from "@/lib/auth/user";
+import { userCanReadUploadPath } from "@/lib/storage/authorizeUploadPath";
 
 /**
- * Serves uploaded files when they are NOT present on the local filesystem.
- *
- * A Next.js `afterFiles` rewrite sends `/uploads/:path*` here only when no static
- * file matched — i.e. on the R2-backed deploy, never in local dev where the files
- * live under `public/uploads`. We 302-redirect to a short-lived R2 signed URL so the
- * browser (and the DICOM viewer's range requests) stream bytes directly from R2,
- * never through the server (zero egress).
- *
- * Access model: stored paths are unguessable (UUID study id + UUID filename) and the
- * signed URL is short-lived — a capability URL. Requests for `/uploads/*.dcm` etc. are
- * outside the Clerk middleware matcher (dot-paths), so we intentionally do not call
- * `auth()` here. TODO (Phase 5): add ownership-scoped signing for the multi-tenant demo.
+ * Authenticated file proxy (no redirect to R2).
+ * Browser Network tab only shows `/uploads/...` on our origin — requires the
+ * caller's session cookie. Supports HTTP Range for DICOM loaders.
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
-  if (storageBackend !== "r2") {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { path } = await params;
+  if (!path?.length || path.some((p) => p === ".." || p.includes("\\"))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const webPath = `/uploads/${path.join("/")}`;
-  const url = await getSignedReadUrl(webPath, 21_600); // 6h
-  return NextResponse.redirect(url, 302);
+  const allowed = await userCanReadUploadPath(userId, webPath);
+  if (!allowed) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Local: static public/uploads usually wins; if rewrite hits us, stream from disk/R2 helper
+  try {
+    const range = req.headers.get("range");
+    const obj = await getObjectForResponse(webPath, range);
+
+    const headers = new Headers();
+    headers.set("Cache-Control", "private, no-store");
+    headers.set("X-Content-Type-Options", "nosniff");
+    if (obj.contentType) headers.set("Content-Type", obj.contentType);
+    else if (webPath.endsWith(".dcm")) headers.set("Content-Type", "application/dicom");
+    else if (webPath.endsWith(".pdf")) headers.set("Content-Type", "application/pdf");
+    else if (webPath.endsWith(".png")) headers.set("Content-Type", "image/png");
+    if (obj.contentLength != null) headers.set("Content-Length", String(obj.contentLength));
+    if (obj.acceptRanges) headers.set("Accept-Ranges", obj.acceptRanges);
+    if (obj.contentRange) headers.set("Content-Range", obj.contentRange);
+
+    const body =
+      obj.body instanceof Buffer
+        ? new Uint8Array(obj.body)
+        : (obj.body as BodyInit);
+
+    return new NextResponse(body, { status: obj.status, headers });
+  } catch (e) {
+    console.error("[files] proxy failed", storageBackend, webPath, e);
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+}
+
+export async function HEAD(
+  req: NextRequest,
+  ctx: { params: Promise<{ path: string[] }> },
+) {
+  const res = await GET(req, ctx);
+  return new NextResponse(null, { status: res.status, headers: res.headers });
 }

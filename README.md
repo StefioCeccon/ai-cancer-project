@@ -278,6 +278,8 @@ Live: [https://aicancerproject.vercel.app](https://aicancerproject.vercel.app)
 
 This software is a data aggregation and AI-assisted analysis tool. It is **not** a medical device and does **not** provide diagnosis or treatment. AI-generated outputs are observations for discussion with qualified professionals only. Do not use this tool as a substitute for professional medical advice, diagnosis, or treatment.
 
+When you run chat, analysis, MDT, or imaging AI, selected patient data (including labs, reports, and sometimes scan images) is sent to the AI provider you configure (e.g. Gemini, OpenAI, Anthropic, Mistral). Only invite people you trust to shared patient records.
+
 ---
 
 ## License

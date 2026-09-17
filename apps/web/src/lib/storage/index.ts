@@ -116,8 +116,9 @@ export async function getObjectBytes(webPath: string): Promise<Buffer> {
 }
 
 /**
- * Short-lived signed GET URL for direct browser access (R2 only). For the local
- * backend the web path is returned unchanged since files are served statically.
+ * Short-lived signed GET URL for direct browser access (R2 only). Prefer
+ * `getObjectForResponse` for authenticated proxying so signatures never appear
+ * in the browser Network tab.
  */
 export async function getSignedReadUrl(
   webPath: string,
@@ -129,4 +130,89 @@ export async function getSignedReadUrl(
     new GetObjectCommand({ Bucket: bucket!, Key: toObjectKey(webPath) }),
     { expiresIn: expiresInSeconds },
   );
+}
+
+export type ObjectResponse = {
+  body: ReadableStream<Uint8Array> | Blob | Buffer;
+  contentType?: string;
+  contentLength?: number;
+  contentRange?: string;
+  acceptRanges?: string;
+  status: number;
+};
+
+/**
+ * Fetch object bytes from R2 (or local) for authenticated proxy responses.
+ * Forwards HTTP Range when provided (needed for DICOM loaders).
+ */
+export async function getObjectForResponse(
+  webPath: string,
+  rangeHeader?: string | null,
+): Promise<ObjectResponse> {
+  if (storageBackend === "r2") {
+    const res = await r2().send(
+      new GetObjectCommand({
+        Bucket: bucket!,
+        Key: toObjectKey(webPath),
+        ...(rangeHeader ? { Range: rangeHeader } : {}),
+      }),
+    );
+
+    const body = res.Body;
+    if (!body) throw new Error("Empty object body");
+
+    // AWS SDK v3 Body is AsyncIterable / Readable in Node — convert to Web stream when possible
+    const webStream =
+      typeof (body as { transformToWebStream?: () => ReadableStream }).transformToWebStream ===
+      "function"
+        ? (body as { transformToWebStream: () => ReadableStream<Uint8Array> }).transformToWebStream()
+        : undefined;
+
+    const buf =
+      !webStream && typeof (body as { transformToByteArray?: () => Promise<Uint8Array> }).transformToByteArray ===
+      "function"
+        ? Buffer.from(
+            await (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray()
+          )
+        : undefined;
+
+    return {
+      body: (webStream as ReadableStream<Uint8Array>) ?? buf!,
+      contentType: res.ContentType,
+      contentLength: res.ContentLength,
+      contentRange: res.ContentRange,
+      acceptRanges: res.AcceptRanges ?? "bytes",
+      status: rangeHeader && res.ContentRange ? 206 : 200,
+    };
+  }
+
+  const abs = toLocalPath(webPath);
+  const { size } = await import("fs/promises").then((fs) => fs.stat(abs));
+  if (rangeHeader) {
+    const m = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader.trim());
+    if (m) {
+      const start = m[1] ? parseInt(m[1], 10) : 0;
+      const end = m[2] ? parseInt(m[2], 10) : size - 1;
+      const { createReadStream } = await import("fs");
+      const { Readable } = await import("stream");
+      const nodeStream = createReadStream(abs, { start, end });
+      const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
+      return {
+        body: webStream,
+        contentType: undefined,
+        contentLength: end - start + 1,
+        contentRange: `bytes ${start}-${end}/${size}`,
+        acceptRanges: "bytes",
+        status: 206,
+      };
+    }
+  }
+
+  const data = await readFile(abs);
+  return {
+    body: data,
+    contentLength: data.length,
+    acceptRanges: "bytes",
+    status: 200,
+  };
 }

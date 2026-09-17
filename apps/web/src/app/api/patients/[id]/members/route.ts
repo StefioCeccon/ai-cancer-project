@@ -69,7 +69,12 @@ export async function GET(
     const access = await getPatientAccess(patientId, userId);
 
     return NextResponse.json({
-      data: { members, invites, myRole: access?.role ?? "viewer" },
+      data: {
+        members,
+        invites,
+        myRole: access?.role ?? "viewer",
+        myUserId: userId,
+      },
       success: true,
     });
   } catch (error) {

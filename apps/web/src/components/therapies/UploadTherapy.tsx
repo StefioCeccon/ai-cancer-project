@@ -117,6 +117,7 @@ export function UploadTherapy({ patientId, initialData, onSuccess, onCancel }: U
       const uploadForm = new FormData();
       uploadForm.append("file", file);
       uploadForm.append("type", "therapies");
+      uploadForm.append("patientId", patientId);
       const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
       const uploadData = await uploadRes.json();
       if (uploadData.data?.path) setFilePath(uploadData.data.path);

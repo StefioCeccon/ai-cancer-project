@@ -36,6 +36,7 @@ export function SharePatientPanel({
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [role, setRole] = useState<MemberRole>(myRole ?? "viewer");
+  const [myUserId, setMyUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"collaborator" | "viewer">("collaborator");
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export function SharePatientPanel({
       setMembers(json.data.members ?? []);
       setInvites(json.data.invites ?? []);
       if (json.data.myRole) setRole(json.data.myRole);
+      if (json.data.myUserId) setMyUserId(json.data.myUserId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     } finally {
@@ -93,10 +95,20 @@ export function SharePatientPanel({
     }
   }
 
-  async function removeMember(targetUserId: string) {
-    if (!confirm("Remove this person's access?")) return;
+  async function removeMember(targetUserId: string, label?: string) {
+    const leaving = myUserId && targetUserId === myUserId;
+    if (
+      !confirm(
+        leaving
+          ? "Leave this patient? You will lose access until invited again."
+          : `Revoke access for ${label ?? "this person"}? They will lose access immediately.`
+      )
+    ) {
+      return;
+    }
     setBusy(true);
     setError(null);
+    setMessage(null);
     try {
       const res = await fetch(`/api/patients/${patientId}/members`, {
         method: "DELETE",
@@ -105,7 +117,11 @@ export function SharePatientPanel({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Remove failed");
+      setMessage(leaving ? "You left this patient." : "Access revoked.");
       await load();
+      if (leaving) {
+        window.location.href = "/";
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Remove failed");
     } finally {
@@ -174,7 +190,8 @@ export function SharePatientPanel({
             <h3 className="font-semibold text-slate-800 text-sm">Shared access</h3>
             <p className="text-xs text-slate-500 mt-1">
               Invite a family member, carer, or clinician by email. They must use the same email
-              when signing up. Shared health data — only invite people you trust.
+              when signing up. Shared health data — only invite people you trust. AI features may
+              send patient data to third-party model providers when used.
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -217,20 +234,33 @@ export function SharePatientPanel({
                             changeRole(m.userId, e.target.value as "collaborator" | "viewer")
                           }
                           className="text-xs border border-slate-200 rounded-md px-2 py-1"
+                          aria-label="Change role"
                         >
                           <option value="collaborator">collaborator</option>
                           <option value="viewer">viewer</option>
                         </select>
-                        <button
+                        <Button
                           type="button"
+                          variant="secondary"
+                          size="sm"
                           disabled={busy}
-                          onClick={() => removeMember(m.userId)}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50"
-                          title="Remove access"
+                          onClick={() => removeMember(m.userId, m.email ?? undefined)}
                         >
-                          <UserMinus className="w-4 h-4" />
-                        </button>
+                          <UserMinus className="w-3.5 h-3.5" />
+                          Revoke
+                        </Button>
                       </div>
+                    )}
+                    {!isOwner && myUserId && m.userId === myUserId && m.role !== "owner" && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => removeMember(m.userId)}
+                      >
+                        Leave
+                      </Button>
                     )}
                   </li>
                 ))}
@@ -259,7 +289,7 @@ export function SharePatientPanel({
                         onClick={() => revokeInvite(inv.id)}
                         className="text-xs text-amber-800 underline"
                       >
-                        Revoke
+                        Revoke invite
                       </button>
                     )}
                   </div>

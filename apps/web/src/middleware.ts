@@ -5,7 +5,6 @@ import { routing } from "./i18n/routing";
 const handleI18nRouting = createMiddleware(routing);
 
 // Public routes — everything else requires authentication.
-// Locale-prefixed variants are listed because next-intl rewrites "/" → "/<locale>".
 const isPublicRoute = createRouteMatcher([
   "/",
   "/:locale",
@@ -16,10 +15,13 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Clerk's Vercel auto-proxy serves /__clerk/* (including *.js). Never protect
-  // or locale-rewrite those — the SDK handles them before this callback when
-  // possible; if we reach here, pass through.
   if (req.nextUrl.pathname.startsWith("/__clerk")) {
+    return;
+  }
+
+  // Uploaded PHI must never be world-readable (dot-paths used to bypass the matcher).
+  if (req.nextUrl.pathname.startsWith("/uploads/")) {
+    await auth.protect();
     return;
   }
 
@@ -27,8 +29,6 @@ export default clerkMiddleware(async (auth, req) => {
     await auth.protect();
   }
 
-  // next-intl handles locale negotiation/rewrites for page routes only.
-  // API routes are still protected above but must not be locale-rewritten.
   if (req.nextUrl.pathname.startsWith("/api")) {
     return;
   }
@@ -37,10 +37,10 @@ export default clerkMiddleware(async (auth, req) => {
 });
 
 export const config = {
-  // Default matcher skips paths with a "." (static files). Clerk's /__clerk
-  // proxy must still run for assets like clerk.browser.js — list it explicitly.
   matcher: [
-    "/((?!_next|_vercel|.*\\..*).*)",
+    // Default: skip static files with a "." — EXCEPT /uploads/* (PHI)
+    "/((?!_next|_vercel|uploads/|.*\\..*).*)",
+    "/uploads/(.*)",
     "/(api|trpc)(.*)",
     "/__clerk/(.*)",
   ],

@@ -158,6 +158,7 @@ export function UploadReport({ patientId, initialData, onSuccess, onCancel }: Up
         const fd = new FormData();
         fd.append("file", file);
         fd.append("type", "report");
+        fd.append("patientId", patientId);
         const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
         if (!uploadRes.ok) {
           throw new Error(await readApiError(uploadRes, `Failed to upload "${file.name}"`));
