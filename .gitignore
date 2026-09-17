@@ -16,6 +16,9 @@ __pycache__/
 LAUNCH_PLAN.md
 IMAGING_ANALYSIS_PLAN.md
 
+# One-off maintainer scripts (local PHI copy / live backfills — do not publish)
+apps/web/scripts/
+
 # Local tooling / caches
 .claude/
 .pnpm-store/

@@ -3,6 +3,7 @@ import type { AnalysisResult } from "@ai-cancer-project/shared";
 import {
   db,
   patients,
+  patientMembers,
   bloodTests,
   bloodMarkers,
   therapies,
@@ -114,6 +115,23 @@ EGFR, ALK, ROS1, and PD-L1 testing requested.
 
 (Fictional record generated for demonstration purposes only.)`;
 
+const RADIOLOGY_REPORT = `CT CHEST — RESTAGING (FICTIONAL DEMO)
+
+Indication: Stage IIIA NSCLC, post cycle 4 carboplatin/pemetrexed. Assess response.
+
+Technique: Contrast-enhanced CT chest. Comparison to prior staging CT (not available in demo).
+
+Findings:
+Right upper lobe mass appears smaller than expected for untreated disease; residual soft-tissue
+opacity along the fissure without new satellite nodules. No new mediastinal lymphadenopathy
+above short-axis 1 cm. No pleural effusion. Limited upper abdomen unremarkable.
+
+Impression:
+1. Probable partial radiologic response of RUL adenocarcinoma (fictional).
+2. No new distant findings in the scanned FOV.
+
+(Fictional record generated for demonstration purposes only. Linked to the shared NLST sample CT.)`;
+
 const DEMO_ANALYSIS: AnalysisResult = {
   summary:
     "Stage IIIA lung adenocarcinoma showing a partial biochemical response to first-line " +
@@ -149,8 +167,8 @@ const DEMO_ANALYSIS: AnalysisResult = {
 /**
  * Populate a brand-new user's account with a fictional demo patient and data so
  * the product looks alive on first load. Idempotent for the patient row; if the
- * patient exists but imaging is missing (partial prior seed failure), backfills
- * the shared NLST CT. Intended when `NEXT_PUBLIC_DEMO_MODE` is on.
+ * patient exists but imaging/reports are missing (partial prior seed), backfills
+ * those. Intended when `NEXT_PUBLIC_DEMO_MODE` is on.
  */
 export async function seedDemoForUser(userId: string): Promise<void> {
   const existing = await db
@@ -160,13 +178,22 @@ export async function seedDemoForUser(userId: string): Promise<void> {
     .limit(1);
 
   if (existing.length > 0) {
+    const patientId = existing[0].id;
+    await db
+      .insert(patientMembers)
+      .values({ patientId, userId, role: "owner" })
+      .onConflictDoNothing();
+
     const existingImaging = await db
       .select({ id: imagingStudies.id })
       .from(imagingStudies)
       .where(eq(imagingStudies.userId, userId))
       .limit(1);
-    if (existingImaging.length > 0) return;
-    await seedDemoImaging(userId, existing[0].id);
+    if (existingImaging.length === 0) {
+      await seedDemoImaging(userId, patientId);
+    }
+
+    await seedDemoReportsIfMissing(userId, patientId);
     return;
   }
 
@@ -185,6 +212,12 @@ export async function seedDemoForUser(userId: string): Promise<void> {
       notes: "Fictional demo patient. All data is synthetic and for demonstration only.",
     })
     .returning();
+
+  await db.insert(patientMembers).values({
+    patientId: patient.id,
+    userId,
+    role: "owner",
+  });
 
   // 6 monthly blood tests (oldest → newest), each with the full marker panel.
   for (let i = 0; i < 6; i++) {
@@ -241,31 +274,6 @@ export async function seedDemoForUser(userId: string): Promise<void> {
     { userId, patientId: patient.id, name: "Nausea", severity: "mild", startDate: isoDaysoMonths(5), endDate: isoDaysoMonths(2), notes: "Controlled with antiemetics." },
   ]);
 
-  await db.insert(medicalReports).values([
-    {
-      userId,
-      patientId: patient.id,
-      reportType: "visit_note",
-      reportDate: isoDaysoMonths(1),
-      author: "Dr. A. Demo",
-      institution: "Demo Cancer Center",
-      title: "Oncology consultation — follow-up",
-      rawText: ONCOLOGY_LETTER,
-      clinicalSpecialty: "Oncology",
-    },
-    {
-      userId,
-      patientId: patient.id,
-      reportType: "pathology",
-      reportDate: isoDaysoMonths(6, -10),
-      author: "Demo Pathology Dept.",
-      institution: "Demo Cancer Center",
-      title: "Lung core biopsy — adenocarcinoma",
-      rawText: PATHOLOGY_REPORT,
-      clinicalSpecialty: "Pathology",
-    },
-  ]);
-
   await db.insert(analysisRuns).values({
     userId,
     patientId: patient.id,
@@ -280,6 +288,60 @@ export async function seedDemoForUser(userId: string): Promise<void> {
   });
 
   await seedDemoImaging(userId, patient.id);
+  await seedDemoReportsIfMissing(userId, patient.id);
+}
+
+/** Text-only demo reports (no R2 files). Idempotent. */
+async function seedDemoReportsIfMissing(userId: string, patientId: string): Promise<void> {
+  const existing = await db
+    .select({ id: medicalReports.id })
+    .from(medicalReports)
+    .where(eq(medicalReports.patientId, patientId))
+    .limit(1);
+  if (existing.length > 0) return;
+
+  const [study] = await db
+    .select({ id: imagingStudies.id })
+    .from(imagingStudies)
+    .where(eq(imagingStudies.patientId, patientId))
+    .limit(1);
+
+  await db.insert(medicalReports).values([
+    {
+      userId,
+      patientId,
+      reportType: "pathology",
+      reportDate: isoDaysoMonths(6, -10),
+      author: "Demo Pathology Dept.",
+      institution: "Demo Cancer Center",
+      title: "Lung core biopsy — adenocarcinoma",
+      rawText: PATHOLOGY_REPORT,
+      clinicalSpecialty: "Pathology",
+    },
+    {
+      userId,
+      patientId,
+      reportType: "visit_note",
+      reportDate: isoDaysoMonths(1),
+      author: "Dr. A. Demo",
+      institution: "Demo Cancer Center",
+      title: "Oncology consultation — follow-up",
+      rawText: ONCOLOGY_LETTER,
+      clinicalSpecialty: "Oncology",
+    },
+    {
+      userId,
+      patientId,
+      imagingStudyId: study?.id ?? null,
+      reportType: "radiology",
+      reportDate: demoImaging.study.studyDate,
+      author: "Demo Radiology",
+      institution: "Demo Cancer Center",
+      title: "CT chest — restaging (demo)",
+      rawText: RADIOLOGY_REPORT,
+      clinicalSpecialty: "Radiology",
+    },
+  ]);
 }
 
 /** Shared NLST chest CT — DB rows per user, one set of R2 objects for everyone. */

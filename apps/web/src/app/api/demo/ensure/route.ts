@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
-import { db, imagingStudies, patients, users } from "@/lib/db";
+import { db, imagingStudies, medicalReports, patients, users } from "@/lib/db";
 import { seedDemoForUser } from "@/lib/demo/seedDemoForUser";
 
 // Imaging backfill inserts ~150 rows; allow enough time on Vercel.
@@ -54,10 +54,16 @@ export async function POST() {
       .from(imagingStudies)
       .where(eq(imagingStudies.userId, row.id));
 
+    const reportRows = await db
+      .select({ id: medicalReports.id, title: medicalReports.title })
+      .from(medicalReports)
+      .where(eq(medicalReports.userId, row.id));
+
     return NextResponse.json({
       ok: true,
       patients: patientRows,
       imaging: imagingRows,
+      reports: reportRows,
     });
   } catch (e) {
     console.error("[demo] /api/demo/ensure failed", e);
