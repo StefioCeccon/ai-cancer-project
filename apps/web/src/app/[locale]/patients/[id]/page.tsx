@@ -20,6 +20,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { SharePatientPanel } from "@/components/patients/SharePatientPanel";
+import { SyncSelectedPatient } from "@/components/patients/SyncSelectedPatient";
 import type { Patient } from "@ai-cancer-project/shared";
 
 type PatientWithRole = Patient & { role?: "owner" | "collaborator" | "viewer" };
@@ -69,6 +70,8 @@ function InfoRow({
   );
 }
 
+// Section pages live at top-level routes and use the selected patient from context
+// (synced via SyncSelectedPatient on this page) — nested /patients/[id]/… routes do not exist.
 const TABS = [
   {
     key: "overview",
@@ -80,26 +83,25 @@ const TABS = [
     key: "imaging",
     label: "Imaging",
     icon: ScanLine,
-    href: (locale: string, id: string) => `/${locale}/patients/${id}/imaging`,
+    href: (locale: string, _id: string) => `/${locale}/imaging`,
   },
   {
     key: "blood-tests",
     label: "Blood Tests",
     icon: FlaskConical,
-    href: (locale: string, id: string) =>
-      `/${locale}/patients/${id}/blood-tests`,
+    href: (locale: string, _id: string) => `/${locale}/blood-tests`,
   },
   {
     key: "reports",
     label: "Reports",
     icon: FileText,
-    href: (locale: string, id: string) => `/${locale}/patients/${id}/reports`,
+    href: (locale: string, _id: string) => `/${locale}/reports`,
   },
   {
     key: "analysis",
     label: "AI Analysis",
     icon: BrainCircuit,
-    href: (locale: string, id: string) => `/${locale}/patients/${id}/analysis`,
+    href: (locale: string, _id: string) => `/${locale}/analysis`,
   },
   {
     key: "mdt",
@@ -125,10 +127,10 @@ export default async function PatientDetailPage({
 
   const fullName = `${patient.firstName} ${patient.lastName}`;
   const role = patient.role ?? "owner";
-  const canEdit = role === "owner" || role === "collaborator";
 
   return (
     <AppShell title={t("patientDetails")}>
+      <SyncSelectedPatient patientId={id} />
       {/* Back link */}
       <div className="mb-4">
         <Link href={`/${locale}/patients`}>
@@ -164,13 +166,6 @@ export default async function PatientDetailPage({
                 </p>
               </div>
             </div>
-            {canEdit && (
-              <Link href={`/${locale}/patients/${id}/edit`}>
-                <Button variant="secondary" size="sm">
-                  {tCommon("edit")}
-                </Button>
-              </Link>
-            )}
           </div>
         </CardHeader>
         <CardContent>
