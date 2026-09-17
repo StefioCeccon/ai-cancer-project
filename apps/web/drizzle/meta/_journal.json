@@ -64,6 +64,13 @@
       "when": 1784500000000,
       "tag": "0009_fix_skipped_0001_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784600000000,
+      "tag": "0010_patient_members",
+      "breakpoints": true
     }
   ]
 }

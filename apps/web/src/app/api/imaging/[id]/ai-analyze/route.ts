@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { db, imagingStudies, imagingSeries, imagingInstances, medicalReports } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 import { buildImagingSystemPrompt, buildImagingUserPrompt } from "@/lib/ai/imagingPrompts";
 import { buildImagingReportContext } from "@/lib/imaging/linkedReport";
 import { dicomBufferToPng } from "@/lib/imaging/dicomToPng";
@@ -56,11 +57,8 @@ export async function POST(
       }, { status: 503 });
     }
 
-    const [study] = await db
-      .select()
-      .from(imagingStudies)
-      .where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)));
-    if (!study) {
+    const [study] = await db.select().from(imagingStudies).where(eq(imagingStudies.id, id));
+    if (!study || !(await canAccessPatient(study.patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Study not found", success: false }, { status: 404 });
     }
 
@@ -153,7 +151,7 @@ export async function POST(
         aiSummary: medicalReports.aiSummary,
       })
       .from(medicalReports)
-      .where(and(eq(medicalReports.userId, userId), eq(medicalReports.imagingStudyId, id)));
+      .where(eq(medicalReports.imagingStudyId, id));
 
     const radiologistReport = buildImagingReportContext(study.radiologistReport, linkedReports);
 
@@ -213,7 +211,7 @@ export async function POST(
     await db
       .update(imagingStudies)
       .set({ aiFindings: findings })
-      .where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)));
+      .where(eq(imagingStudies.id, id));
 
     return NextResponse.json({
       data: { findings, meta },
@@ -238,9 +236,10 @@ export async function GET(
   const { id } = await params;
   const [study] = await db.select({
     aiFindings: imagingStudies.aiFindings,
-  }).from(imagingStudies).where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)));
+    patientId: imagingStudies.patientId,
+  }).from(imagingStudies).where(eq(imagingStudies.id, id));
 
-  if (!study) {
+  if (!study || !(await canAccessPatient(study.patientId, userId, "viewer"))) {
     return NextResponse.json({ error: "Study not found", success: false }, { status: 404 });
   }
 

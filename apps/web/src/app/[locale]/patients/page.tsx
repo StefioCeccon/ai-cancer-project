@@ -41,8 +41,8 @@ export default async function PatientsPage({
 
   return (
     <AppShell title={t("title")}>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{t("title")}</h1>
         <Link href={`/${locale}/patients/new`}>
           <Button variant="primary">
             <UserPlus className="w-4 h-4" />

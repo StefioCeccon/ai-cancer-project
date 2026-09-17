@@ -430,7 +430,12 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
 
   if (seriesGroups.length === 0 || filePaths.length === 0) {
     return (
-      <div className={cn("flex items-center justify-center bg-black rounded-lg", className)} style={{ minHeight: 400 }}>
+      <div
+        className={cn(
+          "flex items-center justify-center bg-black rounded-lg h-[45vh] min-h-[240px] max-h-[520px] lg:h-[520px] lg:max-h-none",
+          className
+        )}
+      >
         <p className="text-slate-500 text-sm">No images loaded</p>
       </div>
     );
@@ -475,7 +480,7 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
       {/* Toolbar */}
       <div className="flex items-center gap-1 p-2 bg-slate-800 rounded-lg flex-wrap">
         <button onClick={resetView} title="Reset" className="px-2 py-1.5 rounded text-xs text-slate-300 hover:bg-slate-700 flex items-center gap-1">
-          <RotateCw className="w-3.5 h-3.5" /> Reset
+          <RotateCw className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Reset</span>
         </button>
         <button onClick={() => adjustWL(100, 0)} title="Widen window" className="px-2 py-1.5 rounded text-xs text-slate-300 hover:bg-slate-700 flex items-center gap-1">
           <Contrast className="w-3.5 h-3.5" /> W+
@@ -495,7 +500,7 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
             title="Jump to next high-attention slice"
             className="px-2 py-1.5 rounded text-xs text-purple-200 hover:bg-purple-900/40 flex items-center gap-1"
           >
-            <SkipForward className="w-3.5 h-3.5" /> Highlight
+            <SkipForward className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Highlight</span>
           </button>
         )}
         {activeSybilOverlay && hasHeatmaps && (
@@ -510,7 +515,7 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
             )}
           >
             <Layers className="w-3.5 h-3.5" />
-            Heatmap
+            <span className="hidden sm:inline">Heatmap</span>
           </button>
         )}
         {currentInstance && (
@@ -527,12 +532,12 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
             )}
           >
             <Pin className={cn("w-3.5 h-3.5", isCurrentFlagged && "fill-current")} />
-            {isCurrentFlagged ? "Flagged" : "Flag for AI"}
+            <span className="hidden sm:inline">{isCurrentFlagged ? "Flagged" : "Flag for AI"}</span>
           </button>
         )}
         <div className="flex-1" />
         <span className={cn(
-          "text-[11px] px-2 font-mono tabular-nums",
+          "text-[11px] px-2 font-mono tabular-nums hidden sm:inline",
           isCurrentHighRisk ? "text-purple-300" : isCurrentFlagged ? "text-amber-300" : "text-slate-400",
         )}>
           {currentInstance ? (
@@ -549,12 +554,11 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
       <div
         ref={viewportContainerRef}
         className={cn(
-          "relative rounded-lg overflow-hidden",
+          "relative rounded-lg overflow-hidden w-full h-[50vh] min-h-[280px] max-h-[520px] lg:h-[520px] lg:max-h-none bg-black",
           isCurrentHighRisk && "ring-2 ring-purple-400 ring-offset-2 ring-offset-slate-900",
           !isCurrentHighRisk && isCurrentFlagged && "ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900",
           segmentCtx?.anatomyMode && activeSegmentOverlay && "ring-2 ring-teal-400 ring-offset-2 ring-offset-slate-900",
         )}
-        style={{ width: "100%", height: 520, background: "#000" }}
       >
         {currentInstance && (
           <div className="absolute top-3 left-3 z-20 px-2 py-1 rounded-md text-[11px] font-mono tabular-nums text-slate-100 bg-black/70 border border-slate-700/80 pointer-events-none">

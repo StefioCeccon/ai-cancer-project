@@ -243,7 +243,7 @@ function TLAnswer({ item }: { item: Extract<TLItem, { kind: "answer" }> }) {
   const meta = SPECIALIST_META[item.role];
 
   return (
-    <div className="flex items-start gap-3 ml-11">
+    <div className="flex items-start gap-3 ml-4 sm:ml-11">
       <SpecialistIcon role={item.role} size="sm" />
       <div className="flex-1 min-w-0 pt-1">
         <div className="flex items-center gap-1.5 mb-1">
@@ -674,7 +674,7 @@ export default function MDTPage() {
               ))}
 
               {isRunning && (
-                <div className="flex items-center gap-2 text-xs text-slate-400 pl-11 py-2">
+                <div className="flex items-center gap-2 text-xs text-slate-400 pl-4 sm:pl-11 py-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
                   {phaseLabel[phase]}
                 </div>

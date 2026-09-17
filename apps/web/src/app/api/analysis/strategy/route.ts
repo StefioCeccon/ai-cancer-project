@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, patients, imagingStudies, bloodTests, medicalReports } from "@/lib/db";
 import type { ImagingStudy, MedicalReport } from "@/lib/db/schema";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 import { getProvider } from "@/lib/ai/registry";
 import { getDefaultProviderForUser, resolveProviderKey } from "@/lib/ai/keys";
 
@@ -78,10 +79,11 @@ export async function POST(request: NextRequest) {
 
     const { patientId } = parsed.data;
 
-    const [patient] = await db
-      .select()
-      .from(patients)
-      .where(and(eq(patients.id, patientId), eq(patients.userId, userId)));
+    if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+      return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+    }
+
+    const [patient] = await db.select().from(patients).where(eq(patients.id, patientId));
     if (!patient) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
@@ -96,9 +98,9 @@ export async function POST(request: NextRequest) {
     ].filter(Boolean).join("\n");
 
     const [studies, tests, reports] = await Promise.all([
-      db.select().from(imagingStudies).where(and(eq(imagingStudies.userId, userId), eq(imagingStudies.patientId, patientId))).orderBy(desc(imagingStudies.createdAt)),
-      db.select().from(bloodTests).where(and(eq(bloodTests.userId, userId), eq(bloodTests.patientId, patientId))).orderBy(desc(bloodTests.testDate)),
-      db.select().from(medicalReports).where(and(eq(medicalReports.userId, userId), eq(medicalReports.patientId, patientId))).orderBy(desc(medicalReports.reportDate)),
+      db.select().from(imagingStudies).where(eq(imagingStudies.patientId, patientId)).orderBy(desc(imagingStudies.createdAt)),
+      db.select().from(bloodTests).where(eq(bloodTests.patientId, patientId)).orderBy(desc(bloodTests.testDate)),
+      db.select().from(medicalReports).where(eq(medicalReports.patientId, patientId)).orderBy(desc(medicalReports.reportDate)),
     ]);
 
     const imagingSummary = studies.length === 0

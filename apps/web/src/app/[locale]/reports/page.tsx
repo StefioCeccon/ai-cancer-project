@@ -180,8 +180,12 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* Left: list */}
-        <div className="space-y-4">
+        {/* Left: list — hide on mobile when viewing detail/upload */}
+        <div
+          className={`space-y-4 ${
+            selectedReport || showUpload || editingReportId ? "hidden lg:block" : ""
+          }`}
+        >
           {selectedPatientId && (
             <div className="flex justify-end">
               <Button size="sm" onClick={() => setShowUpload((v) => !v)}>
@@ -281,7 +285,24 @@ export default function ReportsPage() {
         </div>
 
         {/* Right: detail, edit, or upload */}
-        <div className="lg:col-span-2">
+        <div
+          className={`lg:col-span-2 ${
+            !(selectedReport || showUpload || editingReportId) ? "hidden lg:block" : ""
+          }`}
+        >
+          {(selectedReport || showUpload || editingReportId) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedReport(null);
+                setShowUpload(false);
+                setEditingReportId(null);
+              }}
+              className="lg:hidden mb-3 text-sm text-blue-600 hover:text-blue-800"
+            >
+              ← Back to reports
+            </button>
+          )}
           {showUpload && selectedPatientId && !editingReportId && (
             <Card>
               <CardHeader>

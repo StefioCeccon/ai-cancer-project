@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, therapies, therapyMedications } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 
 const medicationSchema = z.object({
   name: z.string().min(1),
@@ -41,9 +42,9 @@ export async function GET(
     }
 
     const { id } = await params;
-    const [therapy] = await db.select().from(therapies).where(and(eq(therapies.id, id), eq(therapies.userId, userId)));
+    const [therapy] = await db.select().from(therapies).where(eq(therapies.id, id));
 
-    if (!therapy) {
+    if (!therapy || !(await canAccessPatient(therapy.patientId, userId, "viewer"))) {
       return NextResponse.json({ error: "Therapy not found", success: false }, { status: 404 });
     }
 
@@ -70,6 +71,11 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    const [existing] = await db.select().from(therapies).where(eq(therapies.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Therapy not found", success: false }, { status: 404 });
+    }
+
     const body = await request.json();
     const parsed = updateTherapySchema.safeParse(body);
 
@@ -87,7 +93,7 @@ export async function PATCH(
       const [updated] = await tx
         .update(therapies)
         .set(therapyFields)
-        .where(and(eq(therapies.id, id), eq(therapies.userId, userId)))
+        .where(eq(therapies.id, id))
         .returning();
 
       if (!updated) return null;
@@ -131,7 +137,12 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const [deleted] = await db.delete(therapies).where(and(eq(therapies.id, id), eq(therapies.userId, userId))).returning();
+    const [existing] = await db.select().from(therapies).where(eq(therapies.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Therapy not found", success: false }, { status: 404 });
+    }
+
+    const [deleted] = await db.delete(therapies).where(eq(therapies.id, id)).returning();
 
     if (!deleted) {
       return NextResponse.json({ error: "Therapy not found", success: false }, { status: 404 });

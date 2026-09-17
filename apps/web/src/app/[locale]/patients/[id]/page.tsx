@@ -18,9 +18,13 @@ import {
 import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { SharePatientPanel } from "@/components/patients/SharePatientPanel";
 import type { Patient } from "@ai-cancer-project/shared";
 
-async function fetchPatient(id: string): Promise<Patient | null> {
+type PatientWithRole = Patient & { role?: "owner" | "collaborator" | "viewer" };
+
+async function fetchPatient(id: string): Promise<PatientWithRole | null> {
   try {
     const headersList = await headers();
     const host = headersList.get("host") ?? "localhost:3000";
@@ -120,6 +124,8 @@ export default async function PatientDetailPage({
   if (!patient) notFound();
 
   const fullName = `${patient.firstName} ${patient.lastName}`;
+  const role = patient.role ?? "owner";
+  const canEdit = role === "owner" || role === "collaborator";
 
   return (
     <AppShell title={t("patientDetails")}>
@@ -136,14 +142,21 @@ export default async function PatientDetailPage({
       {/* Patient info card */}
       <Card className="mb-6">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xl font-bold">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-lg sm:text-xl font-bold shrink-0">
                 {patient.firstName[0]}
                 {patient.lastName[0]}
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">{fullName}</h1>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">{fullName}</h1>
+                  {role !== "owner" && (
+                    <Badge variant={role === "collaborator" ? "success" : "neutral"}>
+                      Shared · {role}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-slate-500 mt-0.5">
                   {patient.cancerType
                     ? `${patient.cancerType}${patient.cancerStage ? ` · Stage ${patient.cancerStage}` : ""}`
@@ -151,11 +164,13 @@ export default async function PatientDetailPage({
                 </p>
               </div>
             </div>
-            <Link href={`/${locale}/patients/${id}/edit`}>
-              <Button variant="secondary" size="sm">
-                {tCommon("edit")}
-              </Button>
-            </Link>
+            {canEdit && (
+              <Link href={`/${locale}/patients/${id}/edit`}>
+                <Button variant="secondary" size="sm">
+                  {tCommon("edit")}
+                </Button>
+              </Link>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -216,6 +231,10 @@ export default async function PatientDetailPage({
           )}
         </CardContent>
       </Card>
+
+      <div className="mb-6">
+        <SharePatientPanel patientId={id} myRole={role} />
+      </div>
 
       {/* Section tabs */}
       <div className="flex gap-1 border-b border-slate-200 mb-6 overflow-x-auto">

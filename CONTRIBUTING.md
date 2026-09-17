@@ -30,8 +30,8 @@ Optional: try `--profile ml` and note build time / disk use.
 - Add or improve a locale under `apps/web/src/messages/`
 - Accessibility and UI polish — especially **responsive / mobile** layouts
 - Path toward an **Expo / React Native app** reusing `packages/shared`
-- Tests around auth scoping / API routes
-- Design notes for **shared patients** (family / carer / clinician access)
+- Tests around auth scoping / **shared patients**
+- Further mobile polish / Expo app
 
 ## Development
 

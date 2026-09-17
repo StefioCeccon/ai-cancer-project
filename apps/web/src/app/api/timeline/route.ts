@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, bloodTests, bloodMarkers, imagingStudies, medicalReports, symptoms, therapies, therapyMedications } from "@/lib/db";
-import { and, eq, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { buildTimelineResponse } from "@/lib/timeline/buildEvents";
 import { ensureReportTimelineCategories } from "@/lib/timeline/ensureReportTimelineCategories";
-import { getCurrentUserId, isPatientOwnedBy } from "@/lib/auth/user";
+import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
 
 export async function GET(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!(await isPatientOwnedBy(patientId, userId))) {
+    if (!(await canAccessPatient(patientId, userId, "viewer"))) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 
@@ -32,27 +33,27 @@ export async function GET(request: NextRequest) {
       db
         .select()
         .from(bloodTests)
-        .where(and(eq(bloodTests.userId, userId), eq(bloodTests.patientId, patientId)))
+        .where(eq(bloodTests.patientId, patientId))
         .orderBy(asc(bloodTests.testDate)),
       db
         .select()
         .from(imagingStudies)
-        .where(and(eq(imagingStudies.userId, userId), eq(imagingStudies.patientId, patientId)))
+        .where(eq(imagingStudies.patientId, patientId))
         .orderBy(asc(imagingStudies.studyDate)),
       db
         .select()
         .from(medicalReports)
-        .where(and(eq(medicalReports.userId, userId), eq(medicalReports.patientId, patientId)))
+        .where(eq(medicalReports.patientId, patientId))
         .orderBy(asc(medicalReports.reportDate)),
       db
         .select()
         .from(symptoms)
-        .where(and(eq(symptoms.userId, userId), eq(symptoms.patientId, patientId)))
+        .where(eq(symptoms.patientId, patientId))
         .orderBy(asc(symptoms.startDate)),
       db
         .select()
         .from(therapies)
-        .where(and(eq(therapies.userId, userId), eq(therapies.patientId, patientId)))
+        .where(eq(therapies.patientId, patientId))
         .orderBy(asc(therapies.startDate)),
     ]);
 

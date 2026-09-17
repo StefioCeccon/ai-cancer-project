@@ -244,8 +244,8 @@ export function PatientTimeline({ events, lanes, locale, onReportCategoryChange 
       </div>
 
       {visibleEvents.some((e) => e.category === "symptom") && (
-        <div className="flex items-center gap-3 text-xs text-slate-500">
-          <span className="text-slate-400">Symptom severity:</span>
+        <div className="flex items-center gap-3 flex-wrap text-xs text-slate-500">
+          <span className="text-slate-400 w-full sm:w-auto">Symptom severity:</span>
           {(["mild", "moderate", "severe"] as const).map((s) => (
             <span key={s} className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: SEVERITY_COLORS[s] }} />
@@ -259,8 +259,8 @@ export function PatientTimeline({ events, lanes, locale, onReportCategoryChange 
         </div>
       )}
 
-      {/* Chart */}
-      <div className="flex rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      {/* Chart — desktop / tablet; list below is primary on phones */}
+      <div className="hidden md:flex rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         {/* Fixed lane labels */}
         <div
           className="shrink-0 border-r border-slate-200 bg-slate-50 z-10"
@@ -461,8 +461,48 @@ export function PatientTimeline({ events, lanes, locale, onReportCategoryChange 
         </div>
       )}
 
-      {/* Compact list fallback for accessibility / mobile */}
-      <details className="text-sm text-slate-600">
+      {/* Mobile list (primary) */}
+      <ul className="md:hidden space-y-2 max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        {events
+          .filter((e) => !hiddenTypes.has(e.typeKey) && !hiddenCategories.has(e.category))
+          .map((e) => {
+            const hiddenByOngoing =
+              ongoingOnly &&
+              (e.category === "symptom" || e.category === "therapy") &&
+              !!e.endDate;
+            return (
+              <li
+                key={e.id}
+                className={cn(
+                  "flex gap-3 items-start py-2 border-b border-slate-100 last:border-0 transition-opacity",
+                  hiddenByOngoing && "opacity-40"
+                )}
+              >
+                <span
+                  className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                  style={{
+                    backgroundColor:
+                      lanes.find((l) => l.typeKey === e.typeKey)?.color ?? "#94a3b8",
+                  }}
+                />
+                <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    className="text-left w-full"
+                    onClick={() => !hiddenByOngoing && setSelectedId(e.id)}
+                  >
+                    <span className={cn("font-medium text-slate-800", hiddenByOngoing && "line-through")}>{e.title}</span>
+                    <span className="text-slate-400 ml-2">{formatDateShort(e.date, locale)}</span>
+                    {!hiddenByOngoing && <p className="text-slate-500 text-xs mt-0.5 line-clamp-2">{e.summary}</p>}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+      </ul>
+
+      {/* Compact list fallback for accessibility / desktop */}
+      <details className="hidden md:block text-sm text-slate-600">
         <summary className="cursor-pointer text-slate-500 hover:text-slate-700">
           Chronological list ({visibleEvents.length} items)
         </summary>

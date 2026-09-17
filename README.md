@@ -1,6 +1,6 @@
 # AI Cancer Project
 
-[Live Demo](https://aicancerproject.com)
+[Live Demo](https://aicancerproject.vercel.app)
 [License: PolyForm Noncommercial](LICENSE)
 [Next.js](https://nextjs.org/)
 [PRs Welcome](../../issues)
@@ -16,7 +16,7 @@ If you’re living with cancer — or caring for someone who is — the paperwor
 3. **Interpret** — AI agents (MDT-style); vision models analyse CT/X-ray and help spot findings
 4. **Show up prepared** — walk into clinic with history, trends, and notes in one place
 
-Self-host for privacy, or try the [live demo](https://aicancerproject.com). Community project — patients, carers, clinicians, and builders welcome.
+Self-host for privacy, or try the [live demo](https://aicancerproject.vercel.app). Community project — patients, carers, clinicians, and builders welcome.
 
 > **Not medical advice.** AI output is analytical support, not a diagnosis. Always work with qualified clinicians. See [Medical Disclaimer](#medical-disclaimer).
 
@@ -25,12 +25,12 @@ Self-host for privacy, or try the [live demo](https://aicancerproject.com). Comm
 ## Try it
 
 
-|                      |                                                                                                                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Live demo**        | [aicancerproject.com](https://aicancerproject.com) — sign up, explore seeded sample data, run AI / MDT with a server key or your own |
-| **Docker self-host** | [Self-host with Docker](#self-host-with-docker) — one compose stack                                                                                                      |
-| **Manual self-host** | [Setup Guide](#setup-guide)                                                                                                                                              |
-| **Contribute**       | [Contributing](#contributing)                                                                                                                                            |
+|                      |                                                                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Live demo**        | [aicancerproject.vercel.app](https://aicancerproject.vercel.app) — sign up, explore seeded sample data, run AI / MDT with a server key or your own |
+| **Docker self-host** | [Self-host with Docker](#self-host-with-docker) — one compose stack                                                                                |
+| **Manual self-host** | [Setup Guide](#setup-guide)                                                                                                                        |
+| **Contribute**       | [Contributing](#contributing)                                                                                                                      |
 
 
 ```bash
@@ -45,16 +45,16 @@ cd ai-cancer-project
 Mapped to that flow — **import → track → interpret → show specialists**.
 
 
-|                                      |                                                                                                                                                                                                                  |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Import on the go**                 | Phone photo or PDF of **blood tests** and **reports** → AI extracts markers, dates, and text. No retyping hospital printouts.                                                                                    |
-| **One place for everything**         | Labs, symptoms, letters, and imaging on **one patient timeline** — ready to review before an appointment or show on screen to a clinician.                                                            |
-| **CT / X-ray you can actually open** | Full DICOM viewer (scroll, navigate studies). Built because non-commercial options to *read* scans — not just archive a zip — were essentially missing.                                                          |
+|                                      |                                                                                                                                                                                                                                                       |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Import on the go**                 | Phone photo or PDF of **blood tests** and **reports** → AI extracts markers, dates, and text. No retyping hospital printouts.                                                                                                                         |
+| **One place for everything**         | Labs, symptoms, letters, and imaging on **one patient timeline** — ready to review before an appointment or show on screen to a clinician.                                                                                                            |
+| **CT / X-ray you can actually open** | Full DICOM viewer (scroll, navigate studies). Built because non-commercial options to *read* scans — not just archive a zip — were essentially missing.                                                                                               |
 | **AI on CT & X-ray**                 | Vision models **analyse your scans**, help **spot findings** on studies or flagged slices, and turn them into readable notes. Optional local **Sybil** (MIT/MGH): 1–6 year lung-cancer risk + attention maps. Self-host keeps pixels on your machine. |
-| **MDT agent panel**                  | Like a hospital MDT: specialist agents review in parallel, **debate over multiple rounds**, oncologist synthesises — then you can ask follow-ups. Insight to discuss *with* your care team, not instead of them. |
-| **Longitudinal AI analysis**         | Progression, biomarkers, imaging, treatment response, risk, next steps — Gemini, OpenAI, Anthropic, or Mistral (your keys or the demo’s).                                                                        |
-| **Private by design**                | Self-host or demo sandbox. Encrypted bring-your-own API keys. Sharing with family / carers / doctors is on the roadmap.                                                                                          |
-| **Multilingual**                     | English · Italian · Spanish · French · German.                                                                                                                                                                   |
+| **MDT agent panel**                  | Like a hospital MDT: specialist agents review in parallel, **debate over multiple rounds**, oncologist synthesises — then you can ask follow-ups. Insight to discuss *with* your care team, not instead of them.                                      |
+| **Longitudinal AI analysis**         | Progression, biomarkers, imaging, treatment response, risk, next steps — Gemini, OpenAI, Anthropic, or Mistral (your keys or the demo’s).                                                                                                             |
+| **Private by design**                | Self-host or demo sandbox. Encrypted bring-your-own API keys. Sharing with family / carers / doctors is on the roadmap.                                                                                                                               |
+| **Multilingual**                     | English · Italian · Spanish · French · German.                                                                                                                                                                                                        |
 
 
 > Still **not a diagnosis**. Agents and models are decision-support for discussion with clinicians.
@@ -62,7 +62,7 @@ Mapped to that flow — **import → track → interpret → show specialists**.
 **Planned (help wanted)**
 
 - **Verify Docker Compose** — smoke-test `docker compose up` and report results ([CONTRIBUTING](CONTRIBUTING.md))
-- **Shared patients** — invite family, carer, or clinician (owner / viewer / collaborator)
+- **Shared patients** — invite family / carer / clinician by email (owner · collaborator · viewer) — live; further polish welcome
 - **Responsive UI + mobile app** — better phones/tablets first; path toward a native or Expo app (shared `packages/shared` is already monorepo-ready)
 - Screenshots + demo GIF in the README
 - Broader providers (e.g. Ollama offline) and more locales
@@ -87,12 +87,12 @@ You do not need to be an ML engineer to help. See **[CONTRIBUTING.md](CONTRIBUTI
 **High-impact ways to contribute**
 
 - Smoke-test Docker self-host and file issues with logs
-- **Responsive layout / mobile app** (Expo path via `packages/shared`)
+- Further **mobile polish** / **Expo app** (shell drawer is in; Expo via `packages/shared`)
 - Patient / carer / clinician UX feedback and medical wording
 - Accessibility and i18n
 - Agents (literature, trials, specialty prompts)
 - Imaging / DICOM UX
-- Security and tenancy — including **shared-patient** design
+- Security and tenancy — harden **shared-patient** invites / audit
 
 **How to start**
 
@@ -223,7 +223,7 @@ cd apps/ml-service
 4. Run **AI analysis** or **MDT**; optionally **Sybil** if the ML service is up
 5. Add your own provider keys under **Settings**
 
-On the [live demo](https://aicancerproject.com), a sample NSCLC patient (including a public NLST chest CT) is seeded automatically.
+On the [live demo](https://aicancerproject.vercel.app), a sample NSCLC patient (including a public NLST chest CT) is seeded automatically.
 
 ---
 
@@ -253,7 +253,7 @@ The public demo runs on Vercel + Neon + Cloudflare R2 + Clerk.
 3. Run `pnpm db:migrate` against the production database once
 4. Add the Vercel origin to the R2 bucket CORS policy
 
-Live: [https://aicancerproject.com](https://aicancerproject.com)
+Live: [https://aicancerproject.vercel.app](https://aicancerproject.vercel.app)
 
 ---
 

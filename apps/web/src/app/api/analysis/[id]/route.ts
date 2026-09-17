@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, analysisRuns } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 
 export async function GET(
   _request: NextRequest,
@@ -14,12 +15,9 @@ export async function GET(
     }
 
     const { id } = await params;
-    const [run] = await db
-      .select()
-      .from(analysisRuns)
-      .where(and(eq(analysisRuns.id, id), eq(analysisRuns.userId, userId)));
+    const [run] = await db.select().from(analysisRuns).where(eq(analysisRuns.id, id));
 
-    if (!run) {
+    if (!run || !(await canAccessPatient(run.patientId, userId, "viewer"))) {
       return NextResponse.json({ error: "Analysis run not found", success: false }, { status: 404 });
     }
 
@@ -41,9 +39,14 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const [existing] = await db.select().from(analysisRuns).where(eq(analysisRuns.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Analysis run not found", success: false }, { status: 404 });
+    }
+
     const [deleted] = await db
       .delete(analysisRuns)
-      .where(and(eq(analysisRuns.id, id), eq(analysisRuns.userId, userId)))
+      .where(eq(analysisRuns.id, id))
       .returning();
 
     if (!deleted) {

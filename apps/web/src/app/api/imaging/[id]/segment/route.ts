@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, imagingStudies, imagingSeries, imagingInstances } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { join } from "path";
 import { checkMlService, getSegmentJobStatus, startSegmentJob } from "@/lib/ml/client";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 
 export const maxDuration = 60;
 
@@ -44,11 +45,8 @@ export async function POST(
     }, { status: 503 });
   }
 
-  const [study] = await db
-    .select()
-    .from(imagingStudies)
-    .where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)));
-  if (!study) {
+  const [study] = await db.select().from(imagingStudies).where(eq(imagingStudies.id, id));
+  if (!study || !(await canAccessPatient(study.patientId, userId, "collaborator"))) {
     return NextResponse.json({ error: "Study not found", success: false }, { status: 404 });
   }
 
@@ -102,8 +100,8 @@ export async function GET(
         const [study] = await db
           .select()
           .from(imagingStudies)
-          .where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)));
-        if (study) {
+          .where(eq(imagingStudies.id, id));
+        if (study && (await canAccessPatient(study.patientId, userId, "collaborator"))) {
           const mlModelResults = {
             ...(study.mlModelResults as object ?? {}),
             segmentation: {
@@ -114,7 +112,7 @@ export async function GET(
           await db
             .update(imagingStudies)
             .set({ mlModelResults })
-            .where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)));
+            .where(eq(imagingStudies.id, id));
         }
         return NextResponse.json({ data: { status: job.status, result: job.result }, success: true });
       }
@@ -135,9 +133,10 @@ export async function GET(
 
   const [study] = await db.select({
     mlModelResults: imagingStudies.mlModelResults,
-  }).from(imagingStudies).where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)));
+    patientId: imagingStudies.patientId,
+  }).from(imagingStudies).where(eq(imagingStudies.id, id));
 
-  if (!study) {
+  if (!study || !(await canAccessPatient(study.patientId, userId, "viewer"))) {
     return NextResponse.json({ error: "Study not found", success: false }, { status: 404 });
   }
 

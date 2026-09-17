@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, imagingStudies, imagingSeries, imagingInstances, medicalReports } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { buildSeriesGroups } from "@/lib/imaging/series";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 
 export async function GET(
   _request: NextRequest,
@@ -15,12 +16,9 @@ export async function GET(
     }
 
     const { id } = await params;
-    const [study] = await db
-      .select()
-      .from(imagingStudies)
-      .where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)));
+    const [study] = await db.select().from(imagingStudies).where(eq(imagingStudies.id, id));
 
-    if (!study) {
+    if (!study || !(await canAccessPatient(study.patientId, userId, "viewer"))) {
       return NextResponse.json({ error: "Imaging study not found", success: false }, { status: 404 });
     }
 
@@ -49,7 +47,7 @@ export async function GET(
         aiSummary: medicalReports.aiSummary,
       })
       .from(medicalReports)
-      .where(and(eq(medicalReports.userId, userId), eq(medicalReports.imagingStudyId, id)));
+      .where(eq(medicalReports.imagingStudyId, id));
 
     const linkedReportsForClient = linkedReports.map(({ rawText, aiSummary, ...rest }: (typeof linkedReports)[number]) => ({
       ...rest,
@@ -74,9 +72,14 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const [existing] = await db.select().from(imagingStudies).where(eq(imagingStudies.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Imaging study not found", success: false }, { status: 404 });
+    }
+
     const [deleted] = await db
       .delete(imagingStudies)
-      .where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)))
+      .where(eq(imagingStudies.id, id))
       .returning();
 
     if (!deleted) {

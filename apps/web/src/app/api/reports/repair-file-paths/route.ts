@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { repairReportFilePaths } from "@/lib/upload/repairReportFilePaths";
-import { getCurrentUserId, isPatientOwnedBy } from "@/lib/auth/user";
+import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const patientId = typeof body.patientId === "string" ? body.patientId : undefined;
 
-    if (patientId && !(await isPatientOwnedBy(patientId, userId))) {
+    if (patientId && !(await canAccessPatient(patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 

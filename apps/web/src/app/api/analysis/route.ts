@@ -11,9 +11,10 @@ import {
   therapies,
   therapyMedications,
 } from "@/lib/db";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { getCurrentUserId, isPatientOwnedBy } from "@/lib/auth/user";
+import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient, getAccessiblePatientIds, inArray } from "@/lib/auth/access";
 import { runOncologyAnalysis } from "@/lib/ai";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
 import {
@@ -57,17 +58,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId");
 
-    const data = patientId
-      ? await db
-          .select()
-          .from(analysisRuns)
-          .where(and(eq(analysisRuns.userId, userId), eq(analysisRuns.patientId, patientId)))
-          .orderBy(desc(analysisRuns.createdAt))
-      : await db
-          .select()
-          .from(analysisRuns)
-          .where(eq(analysisRuns.userId, userId))
-          .orderBy(desc(analysisRuns.createdAt));
+    let data;
+    if (patientId) {
+      if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+        return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+      }
+      data = await db
+        .select()
+        .from(analysisRuns)
+        .where(eq(analysisRuns.patientId, patientId))
+        .orderBy(desc(analysisRuns.createdAt));
+    } else {
+      const ids = await getAccessiblePatientIds(userId);
+      if (!ids.length) {
+        return NextResponse.json({ data: [], success: true });
+      }
+      data = await db
+        .select()
+        .from(analysisRuns)
+        .where(inArray(analysisRuns.patientId, ids))
+        .orderBy(desc(analysisRuns.createdAt));
+    }
 
     return NextResponse.json({ data, success: true });
   } catch (error) {
@@ -78,14 +89,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   let runId: string | undefined;
-  let ownerId: string | undefined;
 
   try {
     const userId = await getCurrentUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized", success: false }, { status: 401 });
     }
-    ownerId = userId;
 
     const body = await request.json();
     const parsed = createAnalysisSchema.safeParse(body);
@@ -99,7 +108,7 @@ export async function POST(request: NextRequest) {
 
     const { patientId, analysisType, provider, model, inputDataIds, strategyContext } = parsed.data;
 
-    if (!(await isPatientOwnedBy(patientId, userId))) {
+    if (!(await canAccessPatient(patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 
@@ -120,10 +129,7 @@ export async function POST(request: NextRequest) {
     runId = run.id;
 
     // Fetch patient
-    const [patient] = await db
-      .select()
-      .from(patients)
-      .where(and(eq(patients.id, patientId), eq(patients.userId, userId)));
+    const [patient] = await db.select().from(patients).where(eq(patients.id, patientId));
     if (!patient) {
       throw new Error(`Patient ${patientId} not found`);
     }
@@ -143,8 +149,8 @@ export async function POST(request: NextRequest) {
 
     // Always include therapies and symptoms as background context
     const [therapyRows, symptomRows] = await Promise.all([
-      db.select().from(therapies).where(and(eq(therapies.userId, userId), eq(therapies.patientId, patientId))).orderBy(desc(therapies.startDate)),
-      db.select().from(symptoms).where(and(eq(symptoms.userId, userId), eq(symptoms.patientId, patientId))).orderBy(desc(symptoms.startDate)),
+      db.select().from(therapies).where(eq(therapies.patientId, patientId)).orderBy(desc(therapies.startDate)),
+      db.select().from(symptoms).where(eq(symptoms.patientId, patientId)).orderBy(desc(symptoms.startDate)),
     ]);
 
     let therapyData: string | undefined;
@@ -184,11 +190,10 @@ export async function POST(request: NextRequest) {
     if (bloodTestIds.length > 0) {
       const tests = await Promise.all(
         bloodTestIds.map(async (btId) => {
-          const [test] = await db.select().from(bloodTests).where(and(eq(bloodTests.id, btId), eq(bloodTests.userId, userId)));
-          const markers = test
-            ? await db.select().from(bloodMarkers).where(eq(bloodMarkers.bloodTestId, btId))
-            : [];
-          return test ? { ...test, markers } : null;
+          const [test] = await db.select().from(bloodTests).where(eq(bloodTests.id, btId));
+          if (!test || test.patientId !== patientId) return null;
+          const markers = await db.select().from(bloodMarkers).where(eq(bloodMarkers.bloodTestId, btId));
+          return { ...test, markers };
         })
       );
 
@@ -217,11 +222,9 @@ export async function POST(request: NextRequest) {
     if (reportIds.length > 0) {
       const reports = await Promise.all(
         reportIds.map(async (rId) => {
-          const [report] = await db
-            .select()
-            .from(medicalReports)
-            .where(and(eq(medicalReports.id, rId), eq(medicalReports.userId, userId)));
-          return report ?? null;
+          const [report] = await db.select().from(medicalReports).where(eq(medicalReports.id, rId));
+          if (!report || report.patientId !== patientId) return null;
+          return report;
         })
       );
 
@@ -250,11 +253,9 @@ export async function POST(request: NextRequest) {
     if (imagingStudyIds.length > 0) {
       const studies = await Promise.all(
         imagingStudyIds.map(async (isId) => {
-          const [study] = await db
-            .select()
-            .from(imagingStudies)
-            .where(and(eq(imagingStudies.id, isId), eq(imagingStudies.userId, userId)));
-          return study ?? null;
+          const [study] = await db.select().from(imagingStudies).where(eq(imagingStudies.id, isId));
+          if (!study || study.patientId !== patientId) return null;
+          return study;
         })
       );
 
@@ -309,7 +310,7 @@ export async function POST(request: NextRequest) {
         durationMs,
         completedAt: new Date(),
       })
-      .where(and(eq(analysisRuns.id, run.id), eq(analysisRuns.userId, userId)))
+      .where(eq(analysisRuns.id, run.id))
       .returning();
 
     return NextResponse.json({ data: updated, success: true }, { status: 201 });
@@ -325,11 +326,7 @@ export async function POST(request: NextRequest) {
             errorMessage: message,
             completedAt: new Date(),
           })
-          .where(
-            ownerId
-              ? and(eq(analysisRuns.id, runId), eq(analysisRuns.userId, ownerId))
-              : eq(analysisRuns.id, runId)
-          );
+          .where(eq(analysisRuns.id, runId));
       } catch {
         // Ignore update failure — original error is more important
       }

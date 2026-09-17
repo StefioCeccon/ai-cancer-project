@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, symptoms } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 
 const updateSymptomSchema = z.object({
   name: z.string().min(1).optional(),
@@ -26,9 +27,9 @@ export async function GET(
     }
 
     const { id } = await params;
-    const [row] = await db.select().from(symptoms).where(and(eq(symptoms.id, id), eq(symptoms.userId, userId)));
+    const [row] = await db.select().from(symptoms).where(eq(symptoms.id, id));
 
-    if (!row) {
+    if (!row || !(await canAccessPatient(row.patientId, userId, "viewer"))) {
       return NextResponse.json({ error: "Symptom not found", success: false }, { status: 404 });
     }
 
@@ -50,6 +51,11 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    const [existing] = await db.select().from(symptoms).where(eq(symptoms.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Symptom not found", success: false }, { status: 404 });
+    }
+
     const body = await request.json();
     const parsed = updateSymptomSchema.safeParse(body);
 
@@ -63,7 +69,7 @@ export async function PATCH(
     const [updated] = await db
       .update(symptoms)
       .set(parsed.data)
-      .where(and(eq(symptoms.id, id), eq(symptoms.userId, userId)))
+      .where(eq(symptoms.id, id))
       .returning();
 
     if (!updated) {
@@ -88,7 +94,12 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const [deleted] = await db.delete(symptoms).where(and(eq(symptoms.id, id), eq(symptoms.userId, userId))).returning();
+    const [existing] = await db.select().from(symptoms).where(eq(symptoms.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Symptom not found", success: false }, { status: 404 });
+    }
+
+    const [deleted] = await db.delete(symptoms).where(eq(symptoms.id, id)).returning();
 
     if (!deleted) {
       return NextResponse.json({ error: "Symptom not found", success: false }, { status: 404 });

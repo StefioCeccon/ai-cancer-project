@@ -15,6 +15,8 @@ export interface Patient {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  /** Present when loaded via membership-aware APIs */
+  role?: "owner" | "collaborator" | "viewer";
 }
 
 export interface PatientCreate {

@@ -1,9 +1,10 @@
 import { readdir, stat } from "fs/promises";
 import { join } from "path";
 import { db, medicalReports } from "@/lib/db";
-import { and, eq, asc } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { countDocumentPages } from "./countDocumentPages";
 import { parseStoredFilePaths } from "./parseStoredFilePaths";
+import { getAccessiblePatientIds, inArray } from "@/lib/auth/access";
 
 const UPLOAD_DIR = join(process.cwd(), "public", "uploads");
 
@@ -39,17 +40,30 @@ async function listReportUploadFiles(): Promise<UploadFileEntry[]> {
 }
 
 export async function repairReportFilePaths(userId: string, patientId?: string) {
-  const allReports = patientId
-    ? await db
-        .select()
-        .from(medicalReports)
-        .where(and(eq(medicalReports.userId, userId), eq(medicalReports.patientId, patientId)))
-        .orderBy(asc(medicalReports.createdAt))
-    : await db
-        .select()
-        .from(medicalReports)
-        .where(eq(medicalReports.userId, userId))
-        .orderBy(asc(medicalReports.createdAt));
+  let allReports;
+  if (patientId) {
+    allReports = await db
+      .select()
+      .from(medicalReports)
+      .where(eq(medicalReports.patientId, patientId))
+      .orderBy(asc(medicalReports.createdAt));
+  } else {
+    const ids = await getAccessiblePatientIds(userId);
+    if (!ids.length) {
+      return {
+        repairedCount: 0,
+        skippedCount: 0,
+        remainingOrphanFiles: 0,
+        repaired: [],
+        skipped: [],
+      };
+    }
+    allReports = await db
+      .select()
+      .from(medicalReports)
+      .where(inArray(medicalReports.patientId, ids))
+      .orderBy(asc(medicalReports.createdAt));
+  }
 
   const linked = new Set<string>();
   for (const report of allReports) {
@@ -85,7 +99,7 @@ export async function repairReportFilePaths(userId: string, patientId?: string) 
     fileIndex += pageCount;
 
     const filePath = paths.length === 1 ? paths[0] : JSON.stringify(paths);
-    await db.update(medicalReports).set({ filePath }).where(and(eq(medicalReports.id, report.id), eq(medicalReports.userId, userId)));
+    await db.update(medicalReports).set({ filePath }).where(eq(medicalReports.id, report.id));
 
     repaired.push({ id: report.id, title: report.title, filePath });
   }

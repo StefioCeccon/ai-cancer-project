@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, bloodTests, bloodMarkers } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 
 const markerSchema = z.object({
   name: z.string().min(1),
@@ -33,12 +34,9 @@ export async function GET(
     }
 
     const { id } = await params;
-    const [test] = await db
-      .select()
-      .from(bloodTests)
-      .where(and(eq(bloodTests.id, id), eq(bloodTests.userId, userId)));
+    const [test] = await db.select().from(bloodTests).where(eq(bloodTests.id, id));
 
-    if (!test) {
+    if (!test || !(await canAccessPatient(test.patientId, userId, "viewer"))) {
       return NextResponse.json({ error: "Blood test not found", success: false }, { status: 404 });
     }
 
@@ -65,6 +63,11 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    const [existing] = await db.select().from(bloodTests).where(eq(bloodTests.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Blood test not found", success: false }, { status: 404 });
+    }
+
     const body = await request.json();
     const parsed = updateBloodTestSchema.safeParse(body);
 
@@ -82,7 +85,7 @@ export async function PATCH(
       const [updated] = await tx
         .update(bloodTests)
         .set(testFields)
-        .where(and(eq(bloodTests.id, id), eq(bloodTests.userId, userId)))
+        .where(eq(bloodTests.id, id))
         .returning();
 
       if (!updated) return null;
@@ -126,9 +129,14 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const [existing] = await db.select().from(bloodTests).where(eq(bloodTests.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Blood test not found", success: false }, { status: 404 });
+    }
+
     const [deleted] = await db
       .delete(bloodTests)
-      .where(and(eq(bloodTests.id, id), eq(bloodTests.userId, userId)))
+      .where(eq(bloodTests.id, id))
       .returning();
 
     if (!deleted) {

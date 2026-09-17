@@ -91,6 +91,14 @@ export const getUserIdentity = cache(async (): Promise<UserIdentity | null> => {
   // claim data even if their account predates the flag being set.
   await claimOrphanData(row.id);
 
+  // Auto-accept patient share invites addressed to this email
+  try {
+    const { acceptPendingInvitesForEmail } = await import("@/lib/auth/access");
+    await acceptPendingInvitesForEmail(row.id, row.email);
+  } catch (e) {
+    console.error("[auth] acceptPendingInvitesForEmail failed", e);
+  }
+
   return { internalUserId: row.id, clerkUserId, email: row.email ?? null };
 });
 
@@ -107,11 +115,9 @@ export async function getCurrentUserId(): Promise<string | null> {
   return identity?.internalUserId ?? null;
 }
 
-/** True when the given patient exists and belongs to the user. */
+/** True when the given patient exists and the user is its owner. */
 export async function isPatientOwnedBy(patientId: string, userId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ id: patients.id })
-    .from(patients)
-    .where(and(eq(patients.id, patientId), eq(patients.userId, userId)));
-  return Boolean(row);
+  const { getPatientAccess } = await import("@/lib/auth/access");
+  const access = await getPatientAccess(patientId, userId);
+  return access?.role === "owner";
 }

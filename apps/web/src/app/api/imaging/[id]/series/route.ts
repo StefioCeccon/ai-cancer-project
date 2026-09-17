@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, imagingStudies, imagingSeries, imagingInstances } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { join } from "path";
 import { checkMlService, listStudySeries } from "@/lib/ml/client";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 
 export async function GET(
   _request: NextRequest,
@@ -16,11 +17,8 @@ export async function GET(
 
   const { id } = await params;
 
-  const [study] = await db
-    .select()
-    .from(imagingStudies)
-    .where(and(eq(imagingStudies.id, id), eq(imagingStudies.userId, userId)));
-  if (!study) {
+  const [study] = await db.select().from(imagingStudies).where(eq(imagingStudies.id, id));
+  if (!study || !(await canAccessPatient(study.patientId, userId, "viewer"))) {
     return NextResponse.json({ error: "Study not found", success: false }, { status: 404 });
   }
 

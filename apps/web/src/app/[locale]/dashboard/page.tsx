@@ -1,26 +1,30 @@
 import Link from "next/link";
-import { count, eq } from "drizzle-orm";
+import { count } from "drizzle-orm";
 import { Users, Scan, FlaskConical, BrainCircuit } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { db, patients, imagingStudies, bloodTests, analysisRuns } from "@/lib/db";
+import { db, imagingStudies, bloodTests, analysisRuns } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { getAccessiblePatientIds, inArray } from "@/lib/auth/access";
 
 async function fetchCounts(userId: string) {
+  const ids = await getAccessiblePatientIds(userId);
+  if (!ids.length) {
+    return { totalPatients: 0, totalScans: 0, totalTests: 0, totalAnalyses: 0 };
+  }
+
   const [
-    [{ value: totalPatients }],
     [{ value: totalScans }],
     [{ value: totalTests }],
     [{ value: totalAnalyses }],
   ] = await Promise.all([
-    db.select({ value: count() }).from(patients).where(eq(patients.userId, userId)),
-    db.select({ value: count() }).from(imagingStudies).where(eq(imagingStudies.userId, userId)),
-    db.select({ value: count() }).from(bloodTests).where(eq(bloodTests.userId, userId)),
-    db.select({ value: count() }).from(analysisRuns).where(eq(analysisRuns.userId, userId)),
+    db.select({ value: count() }).from(imagingStudies).where(inArray(imagingStudies.patientId, ids)),
+    db.select({ value: count() }).from(bloodTests).where(inArray(bloodTests.patientId, ids)),
+    db.select({ value: count() }).from(analysisRuns).where(inArray(analysisRuns.patientId, ids)),
   ]);
-  return { totalPatients, totalScans, totalTests, totalAnalyses };
+  return { totalPatients: ids.length, totalScans, totalTests, totalAnalyses };
 }
 
 export default async function DashboardPage({

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, imagingInstances, imagingSeries, imagingStudies } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 
 export async function PATCH(
   request: NextRequest,
@@ -21,14 +22,17 @@ export async function PATCH(
       return NextResponse.json({ error: "flagged (boolean) is required", success: false }, { status: 400 });
     }
 
-    const [ownedInstance] = await db
-      .select({ id: imagingInstances.id })
+    const [row] = await db
+      .select({
+        id: imagingInstances.id,
+        patientId: imagingStudies.patientId,
+      })
       .from(imagingInstances)
       .innerJoin(imagingSeries, eq(imagingInstances.seriesId, imagingSeries.id))
       .innerJoin(imagingStudies, eq(imagingSeries.studyId, imagingStudies.id))
-      .where(and(eq(imagingInstances.id, id), eq(imagingStudies.userId, userId)));
+      .where(eq(imagingInstances.id, id));
 
-    if (!ownedInstance) {
+    if (!row || !(await canAccessPatient(row.patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Instance not found", success: false }, { status: 404 });
     }
 

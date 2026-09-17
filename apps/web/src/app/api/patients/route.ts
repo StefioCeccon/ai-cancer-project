@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, patients } from "@/lib/db";
-import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/auth/user";
+import {
+  ensureOwnerMembership,
+  listAccessiblePatients,
+} from "@/lib/auth/access";
 
 const createPatientSchema = z.object({
   firstName: z.string().min(1),
@@ -25,12 +28,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized", success: false }, { status: 401 });
     }
 
-    const data = await db
-      .select()
-      .from(patients)
-      .where(eq(patients.userId, userId))
-      .orderBy(desc(patients.createdAt));
-
+    const data = await listAccessiblePatients(userId);
     return NextResponse.json({ data, success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -64,7 +62,12 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ data: created, success: true }, { status: 201 });
+    await ensureOwnerMembership(created.id, userId);
+
+    return NextResponse.json(
+      { data: { ...created, role: "owner" as const }, success: true },
+      { status: 201 }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message, success: false }, { status: 500 });

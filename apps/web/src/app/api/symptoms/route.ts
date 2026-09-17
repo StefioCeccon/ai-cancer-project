@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, symptoms } from "@/lib/db";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { getCurrentUserId, isPatientOwnedBy } from "@/lib/auth/user";
+import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient, getAccessiblePatientIds, inArray } from "@/lib/auth/access";
 
 const createSymptomSchema = z.object({
   patientId: z.string().uuid(),
@@ -38,17 +39,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId");
 
-    const rows = patientId
-      ? await db
-          .select()
-          .from(symptoms)
-          .where(and(eq(symptoms.userId, userId), eq(symptoms.patientId, patientId)))
-          .orderBy(desc(symptoms.startDate), desc(symptoms.createdAt))
-      : await db
-          .select()
-          .from(symptoms)
-          .where(eq(symptoms.userId, userId))
-          .orderBy(desc(symptoms.startDate), desc(symptoms.createdAt));
+    let rows;
+    if (patientId) {
+      if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+        return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+      }
+      rows = await db
+        .select()
+        .from(symptoms)
+        .where(eq(symptoms.patientId, patientId))
+        .orderBy(desc(symptoms.startDate), desc(symptoms.createdAt));
+    } else {
+      const ids = await getAccessiblePatientIds(userId);
+      if (!ids.length) {
+        return NextResponse.json({ data: [], success: true });
+      }
+      rows = await db
+        .select()
+        .from(symptoms)
+        .where(inArray(symptoms.patientId, ids))
+        .orderBy(desc(symptoms.startDate), desc(symptoms.createdAt));
+    }
 
     return NextResponse.json({ data: rows, success: true });
   } catch (error) {
@@ -77,7 +88,7 @@ export async function POST(request: NextRequest) {
 
       const { patientId, symptoms: entries, rawText, filePath, sourceTitle } = parsed.data;
 
-      if (!(await isPatientOwnedBy(patientId, userId))) {
+      if (!(await canAccessPatient(patientId, userId, "collaborator"))) {
         return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
       }
 
@@ -110,7 +121,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!(await isPatientOwnedBy(parsed.data.patientId, userId))) {
+    if (!(await canAccessPatient(parsed.data.patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 

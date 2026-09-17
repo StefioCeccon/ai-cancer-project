@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, medicalReports, imagingStudies } from "@/lib/db";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { normalizeStoredTimelineCategory } from "@/lib/timeline/reportLanes";
 import { classifyReportTimelineCategory } from "@/lib/upload/classifyReportTimelineCategory";
-import { getCurrentUserId, isPatientOwnedBy } from "@/lib/auth/user";
+import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient, getAccessiblePatientIds, inArray } from "@/lib/auth/access";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
 
 const createReportSchema = z.object({
@@ -64,9 +65,19 @@ export async function GET(request: NextRequest) {
       .leftJoin(imagingStudies, eq(medicalReports.imagingStudyId, imagingStudies.id))
       .orderBy(desc(medicalReports.createdAt));
 
-    const data = patientId
-      ? await query.where(and(eq(medicalReports.userId, userId), eq(medicalReports.patientId, patientId)))
-      : await query.where(eq(medicalReports.userId, userId));
+    let data;
+    if (patientId) {
+      if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+        return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+      }
+      data = await query.where(eq(medicalReports.patientId, patientId));
+    } else {
+      const ids = await getAccessiblePatientIds(userId);
+      if (!ids.length) {
+        return NextResponse.json({ data: [], success: true });
+      }
+      data = await query.where(inArray(medicalReports.patientId, ids));
+    }
 
     return NextResponse.json({ data, success: true });
   } catch (error) {
@@ -92,7 +103,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!(await isPatientOwnedBy(parsed.data.patientId, userId))) {
+    if (!(await canAccessPatient(parsed.data.patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 

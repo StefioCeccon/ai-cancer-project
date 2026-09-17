@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, imagingStudies } from "@/lib/db";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { getCurrentUserId, isPatientOwnedBy } from "@/lib/auth/user";
+import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient, getAccessiblePatientIds, inArray } from "@/lib/auth/access";
 
 const createImagingStudySchema = z.object({
   patientId: z.string().uuid(),
@@ -24,17 +25,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId");
 
-    const data = patientId
-      ? await db
-          .select()
-          .from(imagingStudies)
-          .where(and(eq(imagingStudies.userId, userId), eq(imagingStudies.patientId, patientId)))
-          .orderBy(desc(imagingStudies.createdAt))
-      : await db
-          .select()
-          .from(imagingStudies)
-          .where(eq(imagingStudies.userId, userId))
-          .orderBy(desc(imagingStudies.createdAt));
+    let data;
+    if (patientId) {
+      if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+        return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+      }
+      data = await db
+        .select()
+        .from(imagingStudies)
+        .where(eq(imagingStudies.patientId, patientId))
+        .orderBy(desc(imagingStudies.createdAt));
+    } else {
+      const ids = await getAccessiblePatientIds(userId);
+      if (!ids.length) {
+        return NextResponse.json({ data: [], success: true });
+      }
+      data = await db
+        .select()
+        .from(imagingStudies)
+        .where(inArray(imagingStudies.patientId, ids))
+        .orderBy(desc(imagingStudies.createdAt));
+    }
 
     return NextResponse.json({ data, success: true });
   } catch (error) {
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!(await isPatientOwnedBy(parsed.data.patientId, userId))) {
+    if (!(await canAccessPatient(parsed.data.patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 

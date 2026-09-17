@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient, getAccessiblePatientIds } from "@/lib/auth/access";
 import {
   db,
   patients,
@@ -59,11 +60,14 @@ export async function POST(request: NextRequest) {
       let runId: string | undefined;
 
       try {
+        if (!(await canAccessPatient(patientId, userId, "collaborator"))) {
+          send({ type: "error", message: `Patient ${patientId} not found` });
+          controller.close();
+          return;
+        }
+
         // Fetch patient
-        const [patient] = await db
-          .select()
-          .from(patients)
-          .where(and(eq(patients.id, patientId), eq(patients.userId, userId)));
+        const [patient] = await db.select().from(patients).where(eq(patients.id, patientId));
         if (!patient) {
           send({ type: "error", message: `Patient ${patientId} not found` });
           controller.close();
@@ -101,11 +105,11 @@ export async function POST(request: NextRequest) {
         // Fetch all patient data in parallel
         const [therapyRows, symptomRows, bloodTestRows, reportRows, imagingRows] =
           await Promise.all([
-            db.select().from(therapies).where(and(eq(therapies.userId, userId), eq(therapies.patientId, patientId))).orderBy(desc(therapies.startDate)),
-            db.select().from(symptoms).where(and(eq(symptoms.userId, userId), eq(symptoms.patientId, patientId))).orderBy(desc(symptoms.startDate)),
-            db.select().from(bloodTests).where(and(eq(bloodTests.userId, userId), eq(bloodTests.patientId, patientId))).orderBy(desc(bloodTests.testDate)),
-            db.select().from(medicalReports).where(and(eq(medicalReports.userId, userId), eq(medicalReports.patientId, patientId))).orderBy(desc(medicalReports.reportDate)),
-            db.select().from(imagingStudies).where(and(eq(imagingStudies.userId, userId), eq(imagingStudies.patientId, patientId))).orderBy(desc(imagingStudies.studyDate)),
+            db.select().from(therapies).where(eq(therapies.patientId, patientId)).orderBy(desc(therapies.startDate)),
+            db.select().from(symptoms).where(eq(symptoms.patientId, patientId)).orderBy(desc(symptoms.startDate)),
+            db.select().from(bloodTests).where(eq(bloodTests.patientId, patientId)).orderBy(desc(bloodTests.testDate)),
+            db.select().from(medicalReports).where(eq(medicalReports.patientId, patientId)).orderBy(desc(medicalReports.reportDate)),
+            db.select().from(imagingStudies).where(eq(imagingStudies.patientId, patientId)).orderBy(desc(imagingStudies.studyDate)),
           ]);
 
         // Therapy — always-on context (fetch meds per therapy)
@@ -226,7 +230,7 @@ export async function POST(request: NextRequest) {
               durationMs,
               completedAt: new Date(),
             })
-            .where(and(eq(analysisRuns.id, run.id), eq(analysisRuns.userId, userId)));
+            .where(eq(analysisRuns.id, run.id));
 
           send({ type: "done", runId: run.id });
         } catch (consultationError) {
@@ -234,14 +238,14 @@ export async function POST(request: NextRequest) {
           await db
             .update(analysisRuns)
             .set({ status: "failed", errorMessage: message, completedAt: new Date() })
-            .where(and(eq(analysisRuns.id, run.id), eq(analysisRuns.userId, userId)));
+            .where(eq(analysisRuns.id, run.id));
           send({ type: "error", message });
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown error";
         if (runId) {
           try {
-            await db.update(analysisRuns).set({ status: "failed", errorMessage: message, completedAt: new Date() }).where(and(eq(analysisRuns.id, runId), eq(analysisRuns.userId, userId)));
+            await db.update(analysisRuns).set({ status: "failed", errorMessage: message, completedAt: new Date() }).where(eq(analysisRuns.id, runId));
           } catch { /* ignore */ }
         }
         send({ type: "error", message });
@@ -270,9 +274,27 @@ export async function GET(request: NextRequest) {
   const patientId = searchParams.get("patientId");
 
   try {
-    const data = patientId
-      ? await db.select().from(analysisRuns).where(and(eq(analysisRuns.userId, userId), eq(analysisRuns.patientId, patientId))).orderBy(desc(analysisRuns.createdAt))
-      : await db.select().from(analysisRuns).where(eq(analysisRuns.userId, userId)).orderBy(desc(analysisRuns.createdAt));
+    let data;
+    if (patientId) {
+      if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+        return Response.json({ error: "Patient not found", success: false }, { status: 404 });
+      }
+      data = await db
+        .select()
+        .from(analysisRuns)
+        .where(eq(analysisRuns.patientId, patientId))
+        .orderBy(desc(analysisRuns.createdAt));
+    } else {
+      const ids = await getAccessiblePatientIds(userId);
+      if (!ids.length) {
+        return Response.json({ data: [], success: true });
+      }
+      data = await db
+        .select()
+        .from(analysisRuns)
+        .where(inArray(analysisRuns.patientId, ids))
+        .orderBy(desc(analysisRuns.createdAt));
+    }
 
     const mdtRuns = (data as AnalysisRun[]).filter((r: AnalysisRun) => r.analysisType === "mdt_consultation");
     return Response.json({ data: mdtRuns, success: true });

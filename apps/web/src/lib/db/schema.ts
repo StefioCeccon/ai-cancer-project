@@ -41,6 +41,12 @@ export const therapyTypeEnum = pgEnum("therapy_type", [
   "chemotherapy", "immunotherapy", "radiation", "surgery",
   "targeted_therapy", "hormone_therapy", "supportive_care", "other",
 ]);
+export const patientMemberRoleEnum = pgEnum("patient_member_role", [
+  "owner", "collaborator", "viewer",
+]);
+export const patientInviteStatusEnum = pgEnum("patient_invite_status", [
+  "pending", "accepted", "revoked",
+]);
 
 // ─── Users (tenant root, keyed to Clerk) ──────────────────────────────────────
 export const users = pgTable("users", {
@@ -88,6 +94,39 @@ export const patients = pgTable("patients", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// ─── Patient members (shared access) ──────────────────────────────────────────
+export const patientMembers = pgTable(
+  "patient_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    patientId: uuid("patient_id").references(() => patients.id, { onDelete: "cascade" }).notNull(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    role: patientMemberRoleEnum("role").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    patientUserUnique: unique("patient_members_patient_user_unique").on(t.patientId, t.userId),
+  }),
+);
+
+// Pending email invites (accepted automatically when invitee signs up)
+export const patientInvites = pgTable(
+  "patient_invites",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    patientId: uuid("patient_id").references(() => patients.id, { onDelete: "cascade" }).notNull(),
+    email: text("email").notNull(),
+    role: patientMemberRoleEnum("role").notNull(),
+    invitedByUserId: text("invited_by_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+    status: patientInviteStatusEnum("status").notNull().default("pending"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    expiresAt: timestamp("expires_at"),
+  },
+  (t) => ({
+    patientEmailUnique: unique("patient_invites_patient_email_unique").on(t.patientId, t.email),
+  }),
+);
 
 // ─── Imaging Studies ──────────────────────────────────────────────────────────
 export const imagingStudies = pgTable("imaging_studies", {
@@ -259,3 +298,9 @@ export type Therapy = typeof therapies.$inferSelect;
 export type TherapyInsert = typeof therapies.$inferInsert;
 export type TherapyMedication = typeof therapyMedications.$inferSelect;
 export type TherapyMedicationInsert = typeof therapyMedications.$inferInsert;
+export type PatientMember = typeof patientMembers.$inferSelect;
+export type PatientMemberInsert = typeof patientMembers.$inferInsert;
+export type PatientInvite = typeof patientInvites.$inferSelect;
+export type PatientInviteInsert = typeof patientInvites.$inferInsert;
+export type PatientMemberRole = (typeof patientMemberRoleEnum.enumValues)[number];
+export type PatientInviteStatus = (typeof patientInviteStatusEnum.enumValues)[number];

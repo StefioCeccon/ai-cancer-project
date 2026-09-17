@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, patients, bloodTests, bloodMarkers, medicalReports, analysisRuns, imagingStudies, symptoms, therapies, therapyMedications } from "@/lib/db";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { getProvider } from "@/lib/ai";
 import { getDefaultProviderForUser, resolveProviderKey } from "@/lib/ai/keys";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 import type { AIProvider } from "@ai-cancer-project/shared";
 
 // Builds a comprehensive context string from all patient data
 async function buildPatientContext(patientId: string, userId: string): Promise<string> {
-  const [patient] = await db.select().from(patients).where(and(eq(patients.id, patientId), eq(patients.userId, userId))).limit(1);
+  if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+    throw new Error("Patient not found");
+  }
+
+  const [patient] = await db.select().from(patients).where(eq(patients.id, patientId)).limit(1);
   if (!patient) throw new Error("Patient not found");
 
   const lines: string[] = [];
@@ -28,7 +33,7 @@ async function buildPatientContext(patientId: string, userId: string): Promise<s
   const tests = await db
     .select()
     .from(bloodTests)
-    .where(and(eq(bloodTests.userId, userId), eq(bloodTests.patientId, patientId)))
+    .where(eq(bloodTests.patientId, patientId))
     .orderBy(desc(bloodTests.testDate))
     .limit(10);
 
@@ -58,7 +63,7 @@ async function buildPatientContext(patientId: string, userId: string): Promise<s
   const reports = await db
     .select()
     .from(medicalReports)
-    .where(and(eq(medicalReports.userId, userId), eq(medicalReports.patientId, patientId)))
+    .where(eq(medicalReports.patientId, patientId))
     .orderBy(desc(medicalReports.reportDate))
     .limit(10);
 
@@ -82,7 +87,7 @@ async function buildPatientContext(patientId: string, userId: string): Promise<s
   const studies = await db
     .select()
     .from(imagingStudies)
-    .where(and(eq(imagingStudies.userId, userId), eq(imagingStudies.patientId, patientId)))
+    .where(eq(imagingStudies.patientId, patientId))
     .orderBy(desc(imagingStudies.studyDate))
     .limit(5);
 
@@ -100,7 +105,7 @@ async function buildPatientContext(patientId: string, userId: string): Promise<s
   const therapyRows = await db
     .select()
     .from(therapies)
-    .where(and(eq(therapies.userId, userId), eq(therapies.patientId, patientId)))
+    .where(eq(therapies.patientId, patientId))
     .orderBy(desc(therapies.startDate));
 
   if (therapyRows.length > 0) {
@@ -131,7 +136,7 @@ async function buildPatientContext(patientId: string, userId: string): Promise<s
   const symptomRows = await db
     .select()
     .from(symptoms)
-    .where(and(eq(symptoms.userId, userId), eq(symptoms.patientId, patientId)))
+    .where(eq(symptoms.patientId, patientId))
     .orderBy(desc(symptoms.startDate));
 
   if (symptomRows.length > 0) {
@@ -147,7 +152,7 @@ async function buildPatientContext(patientId: string, userId: string): Promise<s
   const analyses = await db
     .select()
     .from(analysisRuns)
-    .where(and(eq(analysisRuns.userId, userId), eq(analysisRuns.patientId, patientId)))
+    .where(eq(analysisRuns.patientId, patientId))
     .orderBy(desc(analysisRuns.createdAt))
     .limit(3);
 

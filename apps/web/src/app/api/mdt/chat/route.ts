@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, patients, analysisRuns } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 import { getProvider } from "@/lib/ai/registry";
 import { resolveProviderKey } from "@/lib/ai/keys";
 import { SPECIALIST_SYSTEM_PROMPTS, buildOncologistChatPrompt } from "@/lib/ai/prompts";
@@ -35,13 +36,19 @@ export async function POST(request: NextRequest) {
   const { patientId, runId, provider, model, question, chatHistory = [] } = parsed.data;
 
   try {
+    if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+      return Response.json({ error: "Patient not found" }, { status: 404 });
+    }
+
     const [[patient], [run]] = await Promise.all([
-      db.select().from(patients).where(and(eq(patients.id, patientId), eq(patients.userId, userId))),
-      db.select().from(analysisRuns).where(and(eq(analysisRuns.id, runId), eq(analysisRuns.userId, userId))),
+      db.select().from(patients).where(eq(patients.id, patientId)),
+      db.select().from(analysisRuns).where(eq(analysisRuns.id, runId)),
     ]);
 
     if (!patient) return Response.json({ error: "Patient not found" }, { status: 404 });
-    if (!run?.result) return Response.json({ error: "Consultation not found" }, { status: 404 });
+    if (!run?.result || run.patientId !== patientId) {
+      return Response.json({ error: "Consultation not found" }, { status: 404 });
+    }
 
     const result = run.result as unknown as MDTConsultationResult;
 

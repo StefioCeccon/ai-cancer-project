@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { db, imagingStudies, imagingSeries, imagingInstances } from "@/lib/db";
 import { and, eq, sql } from "drizzle-orm";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 import { putObject } from "@/lib/storage";
 
 // DICOM magic bytes start at offset 128 ("DICM")
@@ -85,12 +86,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "studyId and files required", success: false }, { status: 400 });
     }
 
-    const [ownedStudy] = await db
-      .select({ id: imagingStudies.id })
+    const [study] = await db
+      .select({ id: imagingStudies.id, patientId: imagingStudies.patientId })
       .from(imagingStudies)
-      .where(and(eq(imagingStudies.id, studyId), eq(imagingStudies.userId, userId)));
+      .where(eq(imagingStudies.id, studyId));
 
-    if (!ownedStudy) {
+    if (!study || !(await canAccessPatient(study.patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Study not found", success: false }, { status: 404 });
     }
 
@@ -160,7 +161,7 @@ export async function POST(req: NextRequest) {
     await db
       .update(imagingStudies)
       .set({ seriesCount: studySeries.length, instanceCount: totalInstances })
-      .where(and(eq(imagingStudies.id, studyId), eq(imagingStudies.userId, userId)));
+      .where(eq(imagingStudies.id, studyId));
 
     return NextResponse.json({
       success: true,

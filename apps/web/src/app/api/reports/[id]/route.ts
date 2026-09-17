@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, medicalReports, imagingStudies } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient } from "@/lib/auth/access";
 import { normalizeStoredTimelineCategory } from "@/lib/timeline/reportLanes";
 import { classifyReportTimelineCategory } from "@/lib/upload/classifyReportTimelineCategory";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
@@ -58,12 +59,9 @@ export async function GET(
     }
 
     const { id } = await params;
-    const [report] = await db
-      .select()
-      .from(medicalReports)
-      .where(and(eq(medicalReports.id, id), eq(medicalReports.userId, userId)));
+    const [report] = await db.select().from(medicalReports).where(eq(medicalReports.id, id));
 
-    if (!report) {
+    if (!report || !(await canAccessPatient(report.patientId, userId, "viewer"))) {
       return NextResponse.json({ error: "Report not found", success: false }, { status: 404 });
     }
 
@@ -92,18 +90,18 @@ export async function PATCH(
       return NextResponse.json({ error: parsed.error.flatten().fieldErrors, success: false }, { status: 400 });
     }
 
-    const [existing] = await db.select().from(medicalReports).where(and(eq(medicalReports.id, id), eq(medicalReports.userId, userId)));
-    if (!existing) {
+    const [existing] = await db.select().from(medicalReports).where(eq(medicalReports.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Report not found", success: false }, { status: 404 });
     }
 
-    // Prevent linking a report to another tenant's imaging study.
+    // Prevent linking a report to an inaccessible imaging study.
     if (parsed.data.imagingStudyId) {
       const [study] = await db
-        .select({ id: imagingStudies.id })
+        .select({ id: imagingStudies.id, patientId: imagingStudies.patientId })
         .from(imagingStudies)
-        .where(and(eq(imagingStudies.id, parsed.data.imagingStudyId), eq(imagingStudies.userId, userId)));
-      if (!study) {
+        .where(eq(imagingStudies.id, parsed.data.imagingStudyId));
+      if (!study || !(await canAccessPatient(study.patientId, userId, "collaborator"))) {
         return NextResponse.json({ error: "Imaging study not found", success: false }, { status: 404 });
       }
     }
@@ -156,7 +154,7 @@ export async function PATCH(
     const [updated] = await db
       .update(medicalReports)
       .set(updates)
-      .where(and(eq(medicalReports.id, id), eq(medicalReports.userId, userId)))
+      .where(eq(medicalReports.id, id))
       .returning();
 
     if (!updated) {
@@ -181,9 +179,14 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const [existing] = await db.select().from(medicalReports).where(eq(medicalReports.id, id));
+    if (!existing || !(await canAccessPatient(existing.patientId, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Report not found", success: false }, { status: 404 });
+    }
+
     const [deleted] = await db
       .delete(medicalReports)
-      .where(and(eq(medicalReports.id, id), eq(medicalReports.userId, userId)))
+      .where(eq(medicalReports.id, id))
       .returning();
 
     if (!deleted) {

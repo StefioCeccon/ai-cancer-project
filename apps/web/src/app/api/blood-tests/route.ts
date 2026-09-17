@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, bloodTests, bloodMarkers } from "@/lib/db";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { getCurrentUserId, isPatientOwnedBy } from "@/lib/auth/user";
+import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient, getAccessiblePatientIds, inArray } from "@/lib/auth/access";
 
 const optionalNumber = z.preprocess((value) => {
   if (value === null || value === undefined || value === "") return undefined;
@@ -43,9 +44,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId");
 
-    const tests = patientId
-      ? await db.select().from(bloodTests).where(and(eq(bloodTests.userId, userId), eq(bloodTests.patientId, patientId))).orderBy(desc(bloodTests.testDate), desc(bloodTests.createdAt))
-      : await db.select().from(bloodTests).where(eq(bloodTests.userId, userId)).orderBy(desc(bloodTests.testDate), desc(bloodTests.createdAt));
+    let tests;
+    if (patientId) {
+      if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+        return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+      }
+      tests = await db
+        .select()
+        .from(bloodTests)
+        .where(eq(bloodTests.patientId, patientId))
+        .orderBy(desc(bloodTests.testDate), desc(bloodTests.createdAt));
+    } else {
+      const ids = await getAccessiblePatientIds(userId);
+      if (!ids.length) {
+        return NextResponse.json({ data: [], success: true });
+      }
+      tests = await db
+        .select()
+        .from(bloodTests)
+        .where(inArray(bloodTests.patientId, ids))
+        .orderBy(desc(bloodTests.testDate), desc(bloodTests.createdAt));
+    }
 
     const testIds = tests.map((t: typeof tests[number]) => t.id);
 
@@ -97,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     const { markers, ...testData } = parsed.data;
 
-    if (!(await isPatientOwnedBy(testData.patientId, userId))) {
+    if (!(await canAccessPatient(testData.patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 

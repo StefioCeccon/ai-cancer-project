@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, patients } from "@/lib/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient, getPatientAccess } from "@/lib/auth/access";
 
 const updatePatientSchema = z.object({
   firstName: z.string().min(1).optional(),
@@ -29,16 +30,17 @@ export async function GET(
     }
 
     const { id } = await params;
-    const [patient] = await db
-      .select()
-      .from(patients)
-      .where(and(eq(patients.id, id), eq(patients.userId, userId)));
+    const access = await getPatientAccess(id, userId);
+    if (!access) {
+      return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+    }
 
+    const [patient] = await db.select().from(patients).where(eq(patients.id, id));
     if (!patient) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 
-    return NextResponse.json({ data: patient, success: true });
+    return NextResponse.json({ data: { ...patient, role: access.role }, success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message, success: false }, { status: 500 });
@@ -56,6 +58,10 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    if (!(await canAccessPatient(id, userId, "collaborator"))) {
+      return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+    }
+
     const body = await request.json();
     const parsed = updatePatientSchema.safeParse(body);
 
@@ -69,7 +75,7 @@ export async function PATCH(
     const [updated] = await db
       .update(patients)
       .set({ ...parsed.data, updatedAt: new Date() })
-      .where(and(eq(patients.id, id), eq(patients.userId, userId)))
+      .where(eq(patients.id, id))
       .returning();
 
     if (!updated) {
@@ -94,10 +100,11 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const [deleted] = await db
-      .delete(patients)
-      .where(and(eq(patients.id, id), eq(patients.userId, userId)))
-      .returning();
+    if (!(await canAccessPatient(id, userId, "owner"))) {
+      return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+    }
+
+    const [deleted] = await db.delete(patients).where(eq(patients.id, id)).returning();
 
     if (!deleted) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });

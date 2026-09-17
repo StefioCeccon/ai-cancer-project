@@ -193,8 +193,8 @@ export default function AnalysisPage() {
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: past runs */}
-        <div className="space-y-4">
+        {/* Left: past runs — after main panel on mobile */}
+        <div className="space-y-4 order-2 lg:order-1">
           {!selectedPatientId && (
             <p className="text-sm text-slate-500">
               Select a patient from the header to run an AI analysis.
@@ -204,7 +204,7 @@ export default function AnalysisPage() {
           {selectedPatientId && pastRuns.length > 0 && (
             <div>
               <p className="text-xs font-medium text-slate-500 mb-2">Previous Analyses</p>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-64 lg:max-h-none overflow-y-auto">
                 {pastRuns.map((run) => (
                   <div
                     key={run.id}
@@ -249,8 +249,8 @@ export default function AnalysisPage() {
           )}
         </div>
 
-        {/* Right: strategy + analysis panel */}
-        <div className="lg:col-span-2 space-y-4">
+        {/* Right: strategy + analysis panel — first on mobile */}
+        <div className="lg:col-span-2 space-y-4 order-1 lg:order-2">
           {selectedPatientId && (
             <StrategyCard
               strategy={strategy}

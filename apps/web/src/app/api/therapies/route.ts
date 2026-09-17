@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, therapies, therapyMedications } from "@/lib/db";
-import { and, eq, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { getCurrentUserId, isPatientOwnedBy } from "@/lib/auth/user";
+import { getCurrentUserId } from "@/lib/auth/user";
+import { canAccessPatient, getAccessiblePatientIds, inArray } from "@/lib/auth/access";
 
 const medicationSchema = z.object({
   name: z.string().min(1),
@@ -69,17 +70,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const patientId = searchParams.get("patientId");
 
-    const rows = patientId
-      ? await db
-          .select()
-          .from(therapies)
-          .where(and(eq(therapies.userId, userId), eq(therapies.patientId, patientId)))
-          .orderBy(desc(therapies.startDate), desc(therapies.createdAt))
-      : await db
-          .select()
-          .from(therapies)
-          .where(eq(therapies.userId, userId))
-          .orderBy(desc(therapies.startDate), desc(therapies.createdAt));
+    let rows;
+    if (patientId) {
+      if (!(await canAccessPatient(patientId, userId, "viewer"))) {
+        return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
+      }
+      rows = await db
+        .select()
+        .from(therapies)
+        .where(eq(therapies.patientId, patientId))
+        .orderBy(desc(therapies.startDate), desc(therapies.createdAt));
+    } else {
+      const ids = await getAccessiblePatientIds(userId);
+      if (!ids.length) {
+        return NextResponse.json({ data: [], success: true });
+      }
+      rows = await db
+        .select()
+        .from(therapies)
+        .where(inArray(therapies.patientId, ids))
+        .orderBy(desc(therapies.startDate), desc(therapies.createdAt));
+    }
 
     const data = await attachMedications(rows);
     return NextResponse.json({ data, success: true });
@@ -109,7 +120,7 @@ export async function POST(request: NextRequest) {
 
       const { patientId, therapies: entries, rawText, filePath, sourceTitle } = parsed.data;
 
-      if (!(await isPatientOwnedBy(patientId, userId))) {
+      if (!(await canAccessPatient(patientId, userId, "collaborator"))) {
         return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
       }
 
@@ -155,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     const { medications, ...therapyData } = parsed.data;
 
-    if (!(await isPatientOwnedBy(therapyData.patientId, userId))) {
+    if (!(await canAccessPatient(therapyData.patientId, userId, "collaborator"))) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 
