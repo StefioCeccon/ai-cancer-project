@@ -80,38 +80,32 @@ export async function PATCH(
 
     const { markers, ...testFields } = parsed.data;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await db.transaction(async (tx: any) => {
-      const [updated] = await tx
-        .update(bloodTests)
-        .set(testFields)
-        .where(eq(bloodTests.id, id))
-        .returning();
+    // Sequential writes — neon-http (Vercel/Neon) does not support db.transaction()
+    const [updated] = await db
+      .update(bloodTests)
+      .set(testFields)
+      .where(eq(bloodTests.id, id))
+      .returning();
 
-      if (!updated) return null;
-
-      if (markers !== undefined) {
-        await tx.delete(bloodMarkers).where(eq(bloodMarkers.bloodTestId, id));
-        if (markers.length > 0) {
-          await tx.insert(bloodMarkers).values(
-            markers.map((m: z.infer<typeof markerSchema>) => ({ ...m, bloodTestId: id }))
-          );
-        }
-      }
-
-      const updatedMarkers = await tx
-        .select()
-        .from(bloodMarkers)
-        .where(eq(bloodMarkers.bloodTestId, id));
-
-      return { ...updated, markers: updatedMarkers };
-    });
-
-    if (!result) {
+    if (!updated) {
       return NextResponse.json({ error: "Blood test not found", success: false }, { status: 404 });
     }
 
-    return NextResponse.json({ data: result, success: true });
+    if (markers !== undefined) {
+      await db.delete(bloodMarkers).where(eq(bloodMarkers.bloodTestId, id));
+      if (markers.length > 0) {
+        await db.insert(bloodMarkers).values(
+          markers.map((m: z.infer<typeof markerSchema>) => ({ ...m, bloodTestId: id })),
+        );
+      }
+    }
+
+    const updatedMarkers = await db
+      .select()
+      .from(bloodMarkers)
+      .where(eq(bloodMarkers.bloodTestId, id));
+
+    return NextResponse.json({ data: { ...updated, markers: updatedMarkers }, success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message, success: false }, { status: 500 });

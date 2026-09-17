@@ -124,34 +124,31 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const created = await db.transaction(async (tx: any) => {
-        const results = [];
-        for (const entry of entries) {
-          const { medications, ...therapyData } = entry;
-          const [therapy] = await tx
-            .insert(therapies)
-            .values({
-              patientId,
-              userId,
-              ...therapyData,
-              rawText: rawText ?? null,
-              filePath: filePath ?? null,
-              sourceTitle: sourceTitle ?? null,
-            })
-            .returning();
+      // Sequential inserts — neon-http does not support db.transaction()
+      const created = [];
+      for (const entry of entries) {
+        const { medications, ...therapyData } = entry;
+        const [therapy] = await db
+          .insert(therapies)
+          .values({
+            patientId,
+            userId,
+            ...therapyData,
+            rawText: rawText ?? null,
+            filePath: filePath ?? null,
+            sourceTitle: sourceTitle ?? null,
+          })
+          .returning();
 
-          let meds: (typeof therapyMedications.$inferSelect)[] = [];
-          if (medications.length > 0) {
-            meds = await tx
-              .insert(therapyMedications)
-              .values(medications.map((m: z.infer<typeof medicationSchema>) => ({ ...m, therapyId: therapy.id })))
-              .returning();
-          }
-          results.push({ ...therapy, medications: meds });
+        let meds: (typeof therapyMedications.$inferSelect)[] = [];
+        if (medications.length > 0) {
+          meds = await db
+            .insert(therapyMedications)
+            .values(medications.map((m: z.infer<typeof medicationSchema>) => ({ ...m, therapyId: therapy.id })))
+            .returning();
         }
-        return results;
-      });
+        created.push({ ...therapy, medications: meds });
+      }
 
       return NextResponse.json({ data: created, success: true }, { status: 201 });
     }
@@ -170,22 +167,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await db.transaction(async (tx: any) => {
-      const [therapy] = await tx.insert(therapies).values({ ...therapyData, userId }).returning();
+    const [therapy] = await db.insert(therapies).values({ ...therapyData, userId }).returning();
 
-      let meds: (typeof therapyMedications.$inferSelect)[] = [];
-      if (medications.length > 0) {
-        meds = await tx
-          .insert(therapyMedications)
-          .values(medications.map((m: z.infer<typeof medicationSchema>) => ({ ...m, therapyId: therapy.id })))
-          .returning();
-      }
+    let meds: (typeof therapyMedications.$inferSelect)[] = [];
+    if (medications.length > 0) {
+      meds = await db
+        .insert(therapyMedications)
+        .values(medications.map((m: z.infer<typeof medicationSchema>) => ({ ...m, therapyId: therapy.id })))
+        .returning();
+    }
 
-      return { ...therapy, medications: meds };
-    });
-
-    return NextResponse.json({ data: result, success: true }, { status: 201 });
+    return NextResponse.json({ data: { ...therapy, medications: meds }, success: true }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message, success: false }, { status: 500 });

@@ -120,25 +120,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Patient not found", success: false }, { status: 404 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await db.transaction(async (tx: any) => {
-      const [createdTest] = await tx
-        .insert(bloodTests)
-        .values({ ...testData, userId })
+    // Sequential inserts — neon-http (Vercel/Neon) does not support db.transaction()
+    const [createdTest] = await db
+      .insert(bloodTests)
+      .values({ ...testData, userId })
+      .returning();
+
+    let createdMarkers: (typeof bloodMarkers.$inferSelect)[] = [];
+    if (markers.length > 0) {
+      createdMarkers = await db
+        .insert(bloodMarkers)
+        .values(markers.map((m: z.infer<typeof markerSchema>) => ({ ...m, bloodTestId: createdTest.id })))
         .returning();
+    }
 
-      let createdMarkers: (typeof bloodMarkers.$inferSelect)[] = [];
-      if (markers.length > 0) {
-        createdMarkers = await tx
-          .insert(bloodMarkers)
-          .values(markers.map((m: z.infer<typeof markerSchema>) => ({ ...m, bloodTestId: createdTest.id })))
-          .returning();
-      }
-
-      return { ...createdTest, markers: createdMarkers };
-    });
-
-    return NextResponse.json({ data: result, success: true }, { status: 201 });
+    return NextResponse.json(
+      { data: { ...createdTest, markers: createdMarkers }, success: true },
+      { status: 201 },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message, success: false }, { status: 500 });

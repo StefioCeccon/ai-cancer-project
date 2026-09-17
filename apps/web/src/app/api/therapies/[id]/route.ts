@@ -88,38 +88,32 @@ export async function PATCH(
 
     const { medications, ...therapyFields } = parsed.data;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await db.transaction(async (tx: any) => {
-      const [updated] = await tx
-        .update(therapies)
-        .set(therapyFields)
-        .where(eq(therapies.id, id))
-        .returning();
+    // Sequential writes — neon-http does not support db.transaction()
+    const [updated] = await db
+      .update(therapies)
+      .set(therapyFields)
+      .where(eq(therapies.id, id))
+      .returning();
 
-      if (!updated) return null;
-
-      if (medications !== undefined) {
-        await tx.delete(therapyMedications).where(eq(therapyMedications.therapyId, id));
-        if (medications.length > 0) {
-          await tx.insert(therapyMedications).values(
-            medications.map((m: z.infer<typeof medicationSchema>) => ({ ...m, therapyId: id }))
-          );
-        }
-      }
-
-      const updatedMeds = await tx
-        .select()
-        .from(therapyMedications)
-        .where(eq(therapyMedications.therapyId, id));
-
-      return { ...updated, medications: updatedMeds };
-    });
-
-    if (!result) {
+    if (!updated) {
       return NextResponse.json({ error: "Therapy not found", success: false }, { status: 404 });
     }
 
-    return NextResponse.json({ data: result, success: true });
+    if (medications !== undefined) {
+      await db.delete(therapyMedications).where(eq(therapyMedications.therapyId, id));
+      if (medications.length > 0) {
+        await db.insert(therapyMedications).values(
+          medications.map((m: z.infer<typeof medicationSchema>) => ({ ...m, therapyId: id })),
+        );
+      }
+    }
+
+    const updatedMeds = await db
+      .select()
+      .from(therapyMedications)
+      .where(eq(therapyMedications.therapyId, id));
+
+    return NextResponse.json({ data: { ...updated, medications: updatedMeds }, success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message, success: false }, { status: 500 });
