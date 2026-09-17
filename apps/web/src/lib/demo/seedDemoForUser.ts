@@ -1,4 +1,4 @@
-import { eq, and, isNull, asc, desc } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 import type { AnalysisResult } from "@ai-cancer-project/shared";
 import {
   db,
@@ -353,10 +353,16 @@ async function seedDemoReportsIfMissing(userId: string, patientId: string): Prom
 }
 
 /**
- * Attach shared demo source images to 2 blood tests + pathology/oncology reports
- * when those rows exist but have no file_path yet.
+ * Attach shared demo source documents to 2 blood tests + pathology/oncology reports.
+ * Also migrates older blank PNG demo paths to v2 PDFs.
  */
 async function attachDemoSourceFilesIfMissing(patientId: string): Promise<void> {
+  const needsDemoPath = (filePath: string | null | undefined) => {
+    if (!filePath) return true;
+    // Prior Sharp SVG PNGs rendered blank on Vercel — replace with v2 PDFs
+    return filePath.includes("/uploads/demo/") && !filePath.includes("/uploads/demo/v2/");
+  };
+
   const oldest = await db
     .select({ id: bloodTests.id, filePath: bloodTests.filePath })
     .from(bloodTests)
@@ -370,45 +376,42 @@ async function attachDemoSourceFilesIfMissing(patientId: string): Promise<void> 
     .orderBy(desc(bloodTests.testDate))
     .limit(1);
 
-  if (oldest[0] && !oldest[0].filePath) {
+  if (oldest[0] && needsDemoPath(oldest[0].filePath)) {
     await db
       .update(bloodTests)
       .set({ filePath: JSON.stringify([DEMO_SOURCE.bloodPrior]) })
       .where(eq(bloodTests.id, oldest[0].id));
   }
-  if (newest[0] && !newest[0].filePath && newest[0].id !== oldest[0]?.id) {
-    await db
-      .update(bloodTests)
-      .set({ filePath: JSON.stringify([DEMO_SOURCE.bloodRecent]) })
-      .where(eq(bloodTests.id, newest[0].id));
-  } else if (newest[0] && !newest[0].filePath) {
+  if (newest[0] && needsDemoPath(newest[0].filePath)) {
     await db
       .update(bloodTests)
       .set({ filePath: JSON.stringify([DEMO_SOURCE.bloodRecent]) })
       .where(eq(bloodTests.id, newest[0].id));
   }
 
-  await db
-    .update(medicalReports)
-    .set({ filePath: JSON.stringify([DEMO_SOURCE.pathology]) })
-    .where(
-      and(
-        eq(medicalReports.patientId, patientId),
-        eq(medicalReports.reportType, "pathology"),
-        isNull(medicalReports.filePath),
-      ),
-    );
+  const reports = await db
+    .select({
+      id: medicalReports.id,
+      reportType: medicalReports.reportType,
+      filePath: medicalReports.filePath,
+    })
+    .from(medicalReports)
+    .where(eq(medicalReports.patientId, patientId));
 
-  await db
-    .update(medicalReports)
-    .set({ filePath: JSON.stringify([DEMO_SOURCE.oncology]) })
-    .where(
-      and(
-        eq(medicalReports.patientId, patientId),
-        eq(medicalReports.reportType, "visit_note"),
-        isNull(medicalReports.filePath),
-      ),
-    );
+  for (const r of reports) {
+    if (!needsDemoPath(r.filePath)) continue;
+    if (r.reportType === "pathology") {
+      await db
+        .update(medicalReports)
+        .set({ filePath: JSON.stringify([DEMO_SOURCE.pathology]) })
+        .where(eq(medicalReports.id, r.id));
+    } else if (r.reportType === "visit_note") {
+      await db
+        .update(medicalReports)
+        .set({ filePath: JSON.stringify([DEMO_SOURCE.oncology]) })
+        .where(eq(medicalReports.id, r.id));
+    }
+  }
 }
 
 /** Shared NLST chest CT — DB rows per user, one set of R2 objects for everyone. */
