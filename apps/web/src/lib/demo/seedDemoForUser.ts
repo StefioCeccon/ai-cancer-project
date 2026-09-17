@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and, isNull, asc, desc } from "drizzle-orm";
 import type { AnalysisResult } from "@ai-cancer-project/shared";
 import {
   db,
@@ -17,6 +17,7 @@ import {
 } from "@/lib/db";
 import type { ImagingStudyInsert } from "@/lib/db/schema";
 import demoImagingData from "./demoImaging.json";
+import { DEMO_SOURCE, ensureDemoSourceFiles } from "./demoSourceFiles";
 
 interface DemoImaging {
   study: {
@@ -171,6 +172,9 @@ const DEMO_ANALYSIS: AnalysisResult = {
  * those. Intended when `NEXT_PUBLIC_DEMO_MODE` is on.
  */
 export async function seedDemoForUser(userId: string): Promise<void> {
+  // Shared demo PNGs on R2/local (once for all users)
+  await ensureDemoSourceFiles();
+
   const existing = await db
     .select({ id: patients.id })
     .from(patients)
@@ -194,6 +198,7 @@ export async function seedDemoForUser(userId: string): Promise<void> {
     }
 
     await seedDemoReportsIfMissing(userId, patientId);
+    await attachDemoSourceFilesIfMissing(patientId);
     return;
   }
 
@@ -289,9 +294,10 @@ export async function seedDemoForUser(userId: string): Promise<void> {
 
   await seedDemoImaging(userId, patient.id);
   await seedDemoReportsIfMissing(userId, patient.id);
+  await attachDemoSourceFilesIfMissing(patient.id);
 }
 
-/** Text-only demo reports (no R2 files). Idempotent. */
+/** Text reports + shared source-file paths. Idempotent for the report rows. */
 async function seedDemoReportsIfMissing(userId: string, patientId: string): Promise<void> {
   const existing = await db
     .select({ id: medicalReports.id })
@@ -317,6 +323,7 @@ async function seedDemoReportsIfMissing(userId: string, patientId: string): Prom
       title: "Lung core biopsy — adenocarcinoma",
       rawText: PATHOLOGY_REPORT,
       clinicalSpecialty: "Pathology",
+      filePath: JSON.stringify([DEMO_SOURCE.pathology]),
     },
     {
       userId,
@@ -328,6 +335,7 @@ async function seedDemoReportsIfMissing(userId: string, patientId: string): Prom
       title: "Oncology consultation — follow-up",
       rawText: ONCOLOGY_LETTER,
       clinicalSpecialty: "Oncology",
+      filePath: JSON.stringify([DEMO_SOURCE.oncology]),
     },
     {
       userId,
@@ -342,6 +350,65 @@ async function seedDemoReportsIfMissing(userId: string, patientId: string): Prom
       clinicalSpecialty: "Radiology",
     },
   ]);
+}
+
+/**
+ * Attach shared demo source images to 2 blood tests + pathology/oncology reports
+ * when those rows exist but have no file_path yet.
+ */
+async function attachDemoSourceFilesIfMissing(patientId: string): Promise<void> {
+  const oldest = await db
+    .select({ id: bloodTests.id, filePath: bloodTests.filePath })
+    .from(bloodTests)
+    .where(eq(bloodTests.patientId, patientId))
+    .orderBy(asc(bloodTests.testDate))
+    .limit(1);
+  const newest = await db
+    .select({ id: bloodTests.id, filePath: bloodTests.filePath })
+    .from(bloodTests)
+    .where(eq(bloodTests.patientId, patientId))
+    .orderBy(desc(bloodTests.testDate))
+    .limit(1);
+
+  if (oldest[0] && !oldest[0].filePath) {
+    await db
+      .update(bloodTests)
+      .set({ filePath: JSON.stringify([DEMO_SOURCE.bloodPrior]) })
+      .where(eq(bloodTests.id, oldest[0].id));
+  }
+  if (newest[0] && !newest[0].filePath && newest[0].id !== oldest[0]?.id) {
+    await db
+      .update(bloodTests)
+      .set({ filePath: JSON.stringify([DEMO_SOURCE.bloodRecent]) })
+      .where(eq(bloodTests.id, newest[0].id));
+  } else if (newest[0] && !newest[0].filePath) {
+    await db
+      .update(bloodTests)
+      .set({ filePath: JSON.stringify([DEMO_SOURCE.bloodRecent]) })
+      .where(eq(bloodTests.id, newest[0].id));
+  }
+
+  await db
+    .update(medicalReports)
+    .set({ filePath: JSON.stringify([DEMO_SOURCE.pathology]) })
+    .where(
+      and(
+        eq(medicalReports.patientId, patientId),
+        eq(medicalReports.reportType, "pathology"),
+        isNull(medicalReports.filePath),
+      ),
+    );
+
+  await db
+    .update(medicalReports)
+    .set({ filePath: JSON.stringify([DEMO_SOURCE.oncology]) })
+    .where(
+      and(
+        eq(medicalReports.patientId, patientId),
+        eq(medicalReports.reportType, "visit_note"),
+        isNull(medicalReports.filePath),
+      ),
+    );
 }
 
 /** Shared NLST chest CT — DB rows per user, one set of R2 objects for everyone. */
