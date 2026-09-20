@@ -24,6 +24,7 @@ export interface MDTConsultationRequest {
   cancerType: string | null;
   therapyData?: string;
   symptomData?: string;
+  vitalsData?: string;
   documents: MDTDocument[];
   provider: AIProvider;
   model: string;
@@ -149,6 +150,7 @@ async function runSpecialist(
       cancerType: request.cancerType,
       therapyData: request.therapyData,
       symptomData: request.symptomData,
+      vitalsData: request.vitalsData,
       selectedDocuments: selectedContent || undefined,
       provider,
       model,
@@ -172,6 +174,7 @@ async function runSpecialist(
     patientContext: request.patientContext,
     therapyData: request.therapyData,
     symptomData: request.symptomData,
+    vitalsData: request.vitalsData,
     selectedDocuments: selectedContent || undefined,
   });
 

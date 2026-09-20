@@ -10,6 +10,7 @@ import {
   symptoms,
   therapies,
   therapyMedications,
+  patientVitals,
 } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
@@ -22,7 +23,7 @@ import {
   formatMlImagingContext,
 } from "@/lib/imaging/mlContext";
 import type { ImagingAnalysisSummary } from "@ai-cancer-project/shared";
-import type { Symptom } from "@/lib/db/schema";
+import type { Symptom, PatientVital } from "@/lib/db/schema";
 
 const createAnalysisSchema = z.object({
   patientId: z.string().uuid(),
@@ -147,10 +148,11 @@ export async function POST(request: NextRequest) {
       .filter(Boolean)
       .join("\n");
 
-    // Always include therapies and symptoms as background context
-    const [therapyRows, symptomRows] = await Promise.all([
+    // Always include therapies, symptoms, and vitals as background context
+    const [therapyRows, symptomRows, vitalRows] = await Promise.all([
       db.select().from(therapies).where(eq(therapies.patientId, patientId)).orderBy(desc(therapies.startDate)),
       db.select().from(symptoms).where(eq(symptoms.patientId, patientId)).orderBy(desc(symptoms.startDate)),
+      db.select().from(patientVitals).where(eq(patientVitals.patientId, patientId)).orderBy(desc(patientVitals.recordedAt)).limit(24),
     ]);
 
     let therapyData: string | undefined;
@@ -182,6 +184,25 @@ export async function POST(request: NextRequest) {
         const severity = s.severity ? ` [${s.severity}]` : "";
         return `- ${s.name}${severity} · ${status}${s.notes ? ` — ${s.notes}` : ""}`;
       }).join("\n");
+    }
+
+    let vitalsData: string | undefined;
+    if (vitalRows.length > 0) {
+      vitalsData = vitalRows
+        .map((v: PatientVital) => {
+          const parts: string[] = [];
+          if (v.weightKg != null) parts.push(`weight ${v.weightKg} kg`);
+          if (v.heightCm != null) parts.push(`height ${v.heightCm} cm`);
+          if (v.weightKg != null && v.heightCm != null) {
+            const m = v.heightCm / 100;
+            parts.push(`BMI ${Math.round((v.weightKg / (m * m)) * 10) / 10}`);
+          }
+          if (v.bpSystolic != null && v.bpDiastolic != null) {
+            parts.push(`BP ${v.bpSystolic}/${v.bpDiastolic} mmHg`);
+          }
+          return `- ${v.recordedAt}: ${parts.join(" · ")}${v.notes ? ` — ${v.notes}` : ""}`;
+        })
+        .join("\n");
     }
 
     // Fetch blood tests (skip for ml_imaging-only focus)
@@ -290,6 +311,7 @@ export async function POST(request: NextRequest) {
           imagingFindings,
           therapyData,
           symptomData,
+          vitalsData,
         },
         provider,
         model

@@ -15,6 +15,7 @@ import {
   HeartPulse,
   Pill,
   Stethoscope,
+  Scale,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -24,6 +25,7 @@ const navItems = [
   { key: "patients", href: "/patients", icon: Users },
   { key: "imaging", href: "/imaging", icon: Scan },
   { key: "bloodTests", href: "/blood-tests", icon: FlaskConical },
+  { key: "vitals", href: "/vitals", icon: Scale },
   { key: "symptoms", href: "/symptoms", icon: HeartPulse },
   { key: "therapies", href: "/therapies", icon: Pill },
   { key: "timelines", href: "/timelines", icon: GitBranch },
@@ -39,6 +41,7 @@ interface SidebarProps {
     patients: string;
     imaging: string;
     bloodTests: string;
+    vitals: string;
     symptoms: string;
     therapies: string;
     timelines: string;

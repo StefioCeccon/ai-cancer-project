@@ -227,6 +227,20 @@ export const symptoms = pgTable("symptoms", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ─── Patient vitals (weight, height, blood pressure over time) ────────────────
+export const patientVitals = pgTable("patient_vitals", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  patientId: uuid("patient_id").references(() => patients.id, { onDelete: "cascade" }).notNull(),
+  recordedAt: text("recorded_at").notNull(),
+  weightKg: real("weight_kg"),
+  heightCm: real("height_cm"),
+  bpSystolic: integer("bp_systolic"),
+  bpDiastolic: integer("bp_diastolic"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── Therapies ────────────────────────────────────────────────────────────────
 export const therapies = pgTable("therapies", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -294,6 +308,8 @@ export type AnalysisRun = typeof analysisRuns.$inferSelect;
 export type AnalysisRunInsert = typeof analysisRuns.$inferInsert;
 export type Symptom = typeof symptoms.$inferSelect;
 export type SymptomInsert = typeof symptoms.$inferInsert;
+export type PatientVital = typeof patientVitals.$inferSelect;
+export type PatientVitalInsert = typeof patientVitals.$inferInsert;
 export type Therapy = typeof therapies.$inferSelect;
 export type TherapyInsert = typeof therapies.$inferInsert;
 export type TherapyMedication = typeof therapyMedications.$inferSelect;

@@ -71,6 +71,13 @@
       "when": 1784600000000,
       "tag": "0010_patient_members",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784800000000,
+      "tag": "0011_patient_vitals",
+      "breakpoints": true
     }
   ]
 }

@@ -40,6 +40,7 @@ export interface OncologyAnalysisRequest {
   analysisType: AnalysisType;
   therapyData?: string;
   symptomData?: string;
+  vitalsData?: string;
   bloodTestData?: string;
   imagingFindings?: string;
   reportData?: string;

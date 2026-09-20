@@ -36,6 +36,7 @@ export async function runResearchDoctor(opts: {
   cancerType: string | null;
   therapyData?: string;
   symptomData?: string;
+  vitalsData?: string;
   selectedDocuments?: string;
   provider: AIProvider;
   model: string;
@@ -72,6 +73,7 @@ export async function runResearchDoctor(opts: {
   const contextSections = [
     opts.therapyData && `## Treatment History\n${opts.therapyData}`,
     opts.symptomData && `## Current Symptoms\n${opts.symptomData}`,
+    opts.vitalsData && `## Vitals (weight, height, blood pressure)\n${opts.vitalsData}`,
     opts.selectedDocuments && `## Selected Clinical Documents\n${opts.selectedDocuments}`,
     supplementaryData,
   ].filter(Boolean).join("\n\n");

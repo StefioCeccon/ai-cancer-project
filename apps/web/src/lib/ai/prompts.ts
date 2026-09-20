@@ -96,12 +96,14 @@ export function buildSpecialistPrompt(opts: {
   patientContext: string;
   therapyData?: string;
   symptomData?: string;
+  vitalsData?: string;
   selectedDocuments?: string;
   supplementaryData?: string;
 }): string {
   const dataSections = [
     opts.therapyData && `## Treatment History\n${opts.therapyData}`,
     opts.symptomData && `## Current Symptoms\n${opts.symptomData}`,
+    opts.vitalsData && `## Vitals (weight, height, blood pressure)\n${opts.vitalsData}`,
     opts.selectedDocuments && `## Selected Clinical Documents\n${opts.selectedDocuments}`,
     opts.supplementaryData && opts.supplementaryData,
   ].filter(Boolean).join("\n\n");
@@ -237,6 +239,7 @@ export function buildAnalysisPrompt(opts: {
   reportData?: string;
   therapyData?: string;
   symptomData?: string;
+  vitalsData?: string;
   locale?: string;
 }): string {
   const lang = opts.locale === "it" ? "Italian" : opts.locale === "es" ? "Spanish" : opts.locale === "fr" ? "French" : "English";
@@ -244,6 +247,7 @@ export function buildAnalysisPrompt(opts: {
   const dataSections = [
     opts.therapyData && `## Treatment History\n${opts.therapyData}`,
     opts.symptomData && `## Symptom History\n${opts.symptomData}`,
+    opts.vitalsData && `## Vitals (weight, height, blood pressure)\n${opts.vitalsData}`,
     opts.bloodTestData && `## Blood Test Results\n${opts.bloodTestData}`,
     opts.imagingFindings && `## Imaging Findings\n${opts.imagingFindings}`,
     opts.reportData && `## Medical Reports\n${opts.reportData}`,

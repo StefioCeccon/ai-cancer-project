@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, patients, bloodTests, bloodMarkers, medicalReports, analysisRuns, imagingStudies, symptoms, therapies, therapyMedications } from "@/lib/db";
+import { db, patients, bloodTests, bloodMarkers, medicalReports, analysisRuns, imagingStudies, symptoms, therapies, therapyMedications, patientVitals } from "@/lib/db";
 import { eq, desc } from "drizzle-orm";
 import { getProvider } from "@/lib/ai";
 import { getDefaultProviderForUser, resolveProviderKey } from "@/lib/ai/keys";
@@ -145,6 +145,32 @@ async function buildPatientContext(patientId: string, userId: string): Promise<s
       const status = s.endDate ? `${s.startDate} → ${s.endDate}` : `${s.startDate} → ongoing`;
       const severity = s.severity ? ` [${s.severity}]` : "";
       lines.push(`  - ${s.name}${severity} · ${status}${s.notes ? ` — ${s.notes}` : ""}`);
+    }
+  }
+
+  // ── Vitals ────────────────────────────────────────────────────────────────
+  const vitalRows = await db
+    .select()
+    .from(patientVitals)
+    .where(eq(patientVitals.patientId, patientId))
+    .orderBy(desc(patientVitals.recordedAt))
+    .limit(24);
+
+  if (vitalRows.length > 0) {
+    lines.push("\n## Vitals (weight, height, blood pressure)");
+    for (const v of vitalRows) {
+      const parts: string[] = [];
+      if (v.weightKg != null) parts.push(`weight ${v.weightKg} kg`);
+      if (v.heightCm != null) parts.push(`height ${v.heightCm} cm`);
+      if (v.weightKg != null && v.heightCm != null) {
+        const m = v.heightCm / 100;
+        const bmi = Math.round((v.weightKg / (m * m)) * 10) / 10;
+        parts.push(`BMI ${bmi}`);
+      }
+      if (v.bpSystolic != null && v.bpDiastolic != null) {
+        parts.push(`BP ${v.bpSystolic}/${v.bpDiastolic} mmHg`);
+      }
+      lines.push(`  - ${v.recordedAt}: ${parts.join(" · ")}${v.notes ? ` — ${v.notes}` : ""}`);
     }
   }
 

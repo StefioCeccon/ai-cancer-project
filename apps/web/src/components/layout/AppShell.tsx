@@ -12,6 +12,7 @@ const NAV_LABELS = {
   patients: "Patients",
   imaging: "Imaging",
   bloodTests: "Blood Tests",
+  vitals: "Vitals",
   symptoms: "Symptoms",
   therapies: "Therapies",
   timelines: "Timelines",

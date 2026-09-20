@@ -14,6 +14,7 @@ import {
   imagingStudies,
   imagingSeries,
   imagingInstances,
+  patientVitals,
 } from "@/lib/db";
 import type { ImagingStudyInsert } from "@/lib/db/schema";
 import demoImagingData from "./demoImaging.json";
@@ -199,6 +200,7 @@ export async function seedDemoForUser(userId: string): Promise<void> {
 
     await seedDemoReportsIfMissing(userId, patientId);
     await attachDemoSourceFilesIfMissing(patientId);
+    await seedDemoVitalsIfMissing(userId, patientId);
     return;
   }
 
@@ -295,6 +297,7 @@ export async function seedDemoForUser(userId: string): Promise<void> {
   await seedDemoImaging(userId, patient.id);
   await seedDemoReportsIfMissing(userId, patient.id);
   await attachDemoSourceFilesIfMissing(patient.id);
+  await seedDemoVitalsIfMissing(userId, patient.id);
 }
 
 /** Text reports + shared source-file paths. Idempotent for the report rows. */
@@ -412,6 +415,40 @@ async function attachDemoSourceFilesIfMissing(patientId: string): Promise<void> 
         .where(eq(medicalReports.id, r.id));
     }
   }
+}
+
+async function seedDemoVitalsIfMissing(userId: string, patientId: string): Promise<void> {
+  const existing = await db
+    .select({ id: patientVitals.id })
+    .from(patientVitals)
+    .where(eq(patientVitals.patientId, patientId))
+    .limit(1);
+  if (existing.length > 0) return;
+
+  // Weight recovering after chemo start; height stable; BP mild variation
+  const heightCm = 168;
+  const weights = [62.4, 61.8, 61.1, 61.5, 62.0, 62.8];
+  const bps: [number, number][] = [
+    [128, 82],
+    [124, 80],
+    [122, 78],
+    [118, 76],
+    [120, 78],
+    [118, 74],
+  ];
+
+  await db.insert(patientVitals).values(
+    weights.map((weightKg, i) => ({
+      userId,
+      patientId,
+      recordedAt: isoDaysoMonths(6 - i),
+      weightKg,
+      heightCm: i === 0 || i === weights.length - 1 ? heightCm : null,
+      bpSystolic: bps[i][0],
+      bpDiastolic: bps[i][1],
+      notes: i === 0 ? "Baseline before chemo" : i === 2 ? "Nadir weight mid-treatment" : null,
+    })),
+  );
 }
 
 /** Shared NLST chest CT — DB rows per user, one set of R2 objects for everyone. */
