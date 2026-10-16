@@ -23,12 +23,7 @@ Self-host for privacy, or try the [live demo](https://aicancerproject.com). Comm
 ### Demo
 
 <p align="center">
-  <img src="docs/media/mdt-analysis.gif" alt="MDT consultation — specialists then oncologist synthesis" width="720" />
-</p>
-
-<p align="center">
-  <img src="docs/media/main-sections.gif" alt="Main app sections — patients, labs, imaging, reports" width="48%" />
-  <img src="docs/media/ai-analysis.gif" alt="AI analysis on patient data" width="48%" />
+  <img src="docs/media/demo.gif" alt="Demo — app sections, MDT consultation, and AI analysis" width="960" />
 </p>
 
 ---

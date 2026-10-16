@@ -36,7 +36,7 @@ _None filed yet._
 
 ### Phase 7 leftovers
 - GitHub topics still to add on the repo settings page (`oncology`, `medical-ai`, `dicom`, …)
-- Optional still screenshots (GIFs already in README)
+- Optional still screenshots (`docs/media/demo.gif` already in README)
 
 ---
 
