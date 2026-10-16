@@ -5,6 +5,8 @@ import { useDropzone } from "react-dropzone";
 import { Upload, FileImage, X, CheckCircle2, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
+import { uploadDicomFiles } from "@/lib/upload/uploadDicomFiles";
+import { readApiError } from "@/lib/upload/readApiError";
 
 interface UploadDicomProps {
   patientId: string;
@@ -170,7 +172,7 @@ export function UploadDicom({ patientId, onSuccess }: UploadDicomProps) {
 
   async function handleUpload() {
     if (files.length === 0) return;
-    setUploadState({ status: "uploading", progress: 10 });
+    setUploadState({ status: "uploading", progress: 5 });
 
     try {
       const studyRes = await fetch("/api/imaging", {
@@ -187,27 +189,27 @@ export function UploadDicom({ patientId, onSuccess }: UploadDicomProps) {
         }),
       });
 
-      if (!studyRes.ok) throw new Error("Failed to create study record");
+      if (!studyRes.ok) {
+        throw new Error(await readApiError(studyRes, "Failed to create study record"));
+      }
       const { data: study } = await studyRes.json();
 
-      setUploadState({ status: "uploading", progress: 20 });
+      setUploadState({ status: "uploading", progress: 10 });
 
-      // Upload in batches of 5 to avoid request size limits
-      const BATCH = 5;
-      for (let i = 0; i < files.length; i += BATCH) {
-        const batch = files.slice(i, i + BATCH);
-        const formData = new FormData();
-        formData.append("studyId", study.id);
-        batch.forEach((f) => formData.append("files", f));
-        const uploadRes = await fetch("/api/imaging/upload", { method: "POST", body: formData });
-        if (!uploadRes.ok) throw new Error("Failed to upload files");
+      const result = await uploadDicomFiles(files, study.id, (done, total) => {
         setUploadState({
           status: "uploading",
-          progress: 20 + Math.round(((i + batch.length) / files.length) * 80),
+          progress: 10 + Math.round((done / total) * 90),
         });
-      }
+      });
 
-      setUploadState({ status: "success", progress: 100, message: `Uploaded ${files.length} file${files.length !== 1 ? "s" : ""}` });
+      const skippedNote =
+        result.skipped > 0 ? ` (${result.skipped} non-image object${result.skipped !== 1 ? "s" : ""} skipped)` : "";
+      setUploadState({
+        status: "success",
+        progress: 100,
+        message: `Uploaded ${result.instanceCount} image${result.instanceCount !== 1 ? "s" : ""}${skippedNote}`,
+      });
       onSuccess?.(study.id);
     } catch (e) {
       setUploadState({

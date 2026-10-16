@@ -141,6 +141,15 @@ export function isPatientScopedUploadPath(
   return parts[3] === patientId;
 }
 
+/** True when `webPath` is under `/uploads/dicom/{studyId}/...`. */
+export function isStudyScopedDicomPath(webPath: string, studyId: string): boolean {
+  const path = normalizeUploadPath(webPath);
+  if (!path.startsWith("/uploads/dicom/") || !UUID_RE.test(studyId)) return false;
+  const parts = path.split("/");
+  // ["", "uploads", "dicom", studyId, filename, ...]
+  return parts.length >= 5 && parts[3] === studyId;
+}
+
 /**
  * Authorize reading a freshly uploaded (or not-yet-linked) patient document path.
  * Falls back to DB-linked path checks for legacy/shared keys.
