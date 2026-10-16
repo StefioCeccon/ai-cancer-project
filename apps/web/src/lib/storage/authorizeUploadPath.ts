@@ -123,3 +123,35 @@ export function sanitizeUploadType(type: string): string {
   const cleaned = type.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32);
   return cleaned || "misc";
 }
+
+/**
+ * True when `webPath` is a patient-scoped document upload path:
+ * `/uploads/{type}/{patientId}/...` (not DICOM / heatmap study folders).
+ */
+export function isPatientScopedUploadPath(
+  webPath: string,
+  patientId: string
+): boolean {
+  const path = normalizeUploadPath(webPath);
+  if (!path.startsWith("/uploads/") || !UUID_RE.test(patientId)) return false;
+  const parts = path.split("/");
+  // ["", "uploads", type, patientId, filename, ...]
+  if (parts.length < 5) return false;
+  if (parts[2] === "dicom" || parts[2] === "sybil-heatmaps") return false;
+  return parts[3] === patientId;
+}
+
+/**
+ * Authorize reading a freshly uploaded (or not-yet-linked) patient document path.
+ * Falls back to DB-linked path checks for legacy/shared keys.
+ */
+export async function userCanAccessPatientUploadPath(
+  userId: string,
+  patientId: string,
+  webPath: string,
+  role: "viewer" | "collaborator" = "collaborator"
+): Promise<boolean> {
+  if (!(await canAccessPatient(patientId, userId, role))) return false;
+  if (isPatientScopedUploadPath(webPath, patientId)) return true;
+  return userCanReadUploadPath(userId, webPath);
+}

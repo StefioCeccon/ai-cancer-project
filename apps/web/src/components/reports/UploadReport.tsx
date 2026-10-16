@@ -9,6 +9,7 @@ import type { ReportType } from "@ai-cancer-project/shared";
 import type { ParsedReportMetadata } from "@/app/api/reports/parse/route";
 import { parseStoredFilePaths } from "@/lib/upload/parseStoredFilePaths";
 import { readApiError } from "@/lib/upload/readApiError";
+import { uploadPatientFile } from "@/lib/upload/uploadPatientFile";
 
 const REPORT_TYPES: { value: ReportType; label: string }[] = [
   { value: "visit_note", label: "Visit Note" },
@@ -66,7 +67,7 @@ export function UploadReport({ patientId, initialData, onSuccess, onCancel }: Up
   const [existingFilePaths, setExistingFilePaths] = useState<string[]>(
     () => parseStoredFilePaths(initialData?.filePath)
   );
-  const [files, setFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<{ file: File; path: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -84,7 +85,7 @@ export function UploadReport({ patientId, initialData, onSuccess, onCancel }: Up
     setAiSummary(initialData.aiSummary ?? "");
     setExistingFilePaths(parseStoredFilePaths(initialData.filePath));
     setAiFilledKeys(new Set());
-    setFiles([]);
+    setUploadedFiles([]);
   }, [initialData]);
 
   function updateMeta(key: AiFilledKey, value: string) {
@@ -112,22 +113,37 @@ export function UploadReport({ patientId, initialData, onSuccess, onCancel }: Up
 
   const onDrop = useCallback(async (accepted: File[]) => {
     if (!accepted.length) return;
-    setFiles((prev) => [...prev, ...accepted]);
     setIsParsing(true);
+    setError(null);
     try {
-      const fd = new FormData();
-      accepted.forEach((f) => fd.append("files", f));
-      // also include previously added files
-      const res = await fetch("/api/reports/parse", { method: "POST", body: fd });
+      const uploaded = await Promise.all(
+        accepted.map(async (file) => {
+          const result = await uploadPatientFile(file, { patientId, type: "report" });
+          return { file, path: result.path };
+        })
+      );
+      setUploadedFiles((prev) => [...prev, ...uploaded]);
+
+      const res = await fetch("/api/reports/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          files: uploaded.map((u) => ({ path: u.path, fileName: u.file.name })),
+        }),
+      });
       const data = await res.json();
-      if (data.text) setRawText((prev) => prev ? `${prev}\n\n---\n\n${data.text}` : data.text);
+      if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : "Failed to parse files");
+      }
+      if (data.text) setRawText((prev) => (prev ? `${prev}\n\n---\n\n${data.text}` : data.text));
       if (data.metadata) applyAiMetadata(data.metadata, accepted[0].name);
-    } catch {
-      // silent fail — user can edit manually
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to parse files");
     } finally {
       setIsParsing(false);
     }
-  }, [applyAiMetadata]);
+  }, [applyAiMetadata, patientId]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -141,7 +157,7 @@ export function UploadReport({ patientId, initialData, onSuccess, onCancel }: Up
   });
 
   function removeFile(index: number) {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
   function removeExistingFile(index: number) {
@@ -153,19 +169,7 @@ export function UploadReport({ patientId, initialData, onSuccess, onCancel }: Up
     setError(null);
     setIsSubmitting(true);
     try {
-      const filePaths: string[] = [...existingFilePaths];
-      for (const file of files) {
-        const fd = new FormData();
-        fd.append("file", file);
-        fd.append("type", "report");
-        fd.append("patientId", patientId);
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-        if (!uploadRes.ok) {
-          throw new Error(await readApiError(uploadRes, `Failed to upload "${file.name}"`));
-        }
-        const uploadData = await uploadRes.json();
-        if (uploadData.data?.path) filePaths.push(uploadData.data.path);
-      }
+      const filePaths = [...existingFilePaths, ...uploadedFiles.map((u) => u.path)];
 
       const payload = {
         ...meta,
@@ -317,11 +321,11 @@ export function UploadReport({ patientId, initialData, onSuccess, onCancel }: Up
         </ul>
       )}
 
-      {files.length > 0 && (
+      {uploadedFiles.length > 0 && (
         <ul className="space-y-1">
-          {files.map((f, i) => (
-            <li key={i} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
-              <span className="text-slate-700 truncate max-w-[80%]">{f.name}</span>
+          {uploadedFiles.map((entry, i) => (
+            <li key={entry.path} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+              <span className="text-slate-700 truncate max-w-[80%]">{entry.file.name}</span>
               <button
                 type="button"
                 onClick={() => removeFile(i)}

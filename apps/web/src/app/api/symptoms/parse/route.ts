@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseSymptomFile } from "@/lib/upload/parseSymptomFile";
 import { getCurrentUserId } from "@/lib/auth/user";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
+import { resolveParseUploadFiles } from "@/lib/upload/resolveParseUploadFiles";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,8 +11,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized", success: false }, { status: 401 });
     }
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
+    const resolved = await resolveParseUploadFiles(req, userId);
+    if ("error" in resolved) {
+      return NextResponse.json(
+        { error: resolved.error, success: false },
+        { status: resolved.status }
+      );
+    }
+
+    const file = resolved.files[0];
     if (!file) {
       return NextResponse.json({ error: "No file", success: false }, { status: 400 });
     }

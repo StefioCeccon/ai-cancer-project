@@ -19,6 +19,7 @@ import {
   type GroupedFileEntry,
   type FileGroup,
 } from "@/components/upload/BulkFileGrouper";
+import { uploadPatientFile } from "@/lib/upload/uploadPatientFile";
 
 const REPORT_TYPES: { value: ReportType; label: string }[] = [
   { value: "visit_note", label: "Visit Note" },
@@ -34,6 +35,7 @@ const REPORT_TYPES: { value: ReportType; label: string }[] = [
 interface ReportFileEntry extends GroupedFileEntry {
   text?: string;
   metadata?: ParsedReportMetadata;
+  storedPath?: string;
 }
 
 interface ReportGroup extends FileGroup<ReportFileEntry> {
@@ -151,10 +153,22 @@ export function BulkUploadReports({ patientId, onSuccess, onCancel }: BulkUpload
     setIsParsing(true);
 
     try {
-      const fd = new FormData();
-      files.forEach((f) => fd.append("files", f));
-      fd.append("mode", "individual");
-      const res = await fetch("/api/reports/parse", { method: "POST", body: fd });
+      const uploaded = await Promise.all(
+        files.map(async (file, index) => {
+          const result = await uploadPatientFile(file, { patientId, type: "report" });
+          return { clientId: placeholders[index].clientId, path: result.path, fileName: file.name };
+        })
+      );
+
+      const res = await fetch("/api/reports/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          mode: "individual",
+          files: uploaded.map((u) => ({ path: u.path, fileName: u.fileName })),
+        }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Parse failed");
 
@@ -165,15 +179,18 @@ export function BulkUploadReports({ patientId, onSuccess, onCancel }: BulkUpload
           p,
         ])
       );
+      const pathByClientId = new Map(uploaded.map((u) => [u.clientId, u.path]));
 
       setGroups((prev) => {
         const parsedNew: ReportFileEntry[] = placeholders.map((entry) => {
           const parsed = parsedByName.get(entry.file.name);
+          const storedPath = pathByClientId.get(entry.clientId);
           if (!parsed) {
-            return { ...entry, parsing: false, parseError: "Failed to parse" };
+            return { ...entry, storedPath, parsing: false, parseError: "Failed to parse" };
           }
           return {
             ...entry,
+            storedPath,
             parsing: false,
             text: parsed.text,
             metadata: parsed.metadata,
@@ -205,7 +222,7 @@ export function BulkUploadReports({ patientId, onSuccess, onCancel }: BulkUpload
     } finally {
       setIsParsing(false);
     }
-  }, []);
+  }, [patientId]);
 
   function updateGroup(groupId: string, patch: Partial<ReportGroup>) {
     setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, ...patch } : g)));
@@ -288,16 +305,12 @@ export function BulkUploadReports({ patientId, onSuccess, onCancel }: BulkUpload
       for (const group of validGroups) {
         const filePaths: string[] = [];
         for (const entry of group.files) {
-          const fd = new FormData();
-          fd.append("file", entry.file);
-          fd.append("type", "report");
-          fd.append("patientId", patientId);
-          const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-          if (!uploadRes.ok) {
-            throw new Error(`Failed to upload "${entry.file.name}"`);
+          if (entry.storedPath) {
+            filePaths.push(entry.storedPath);
+            continue;
           }
-          const uploadData = await uploadRes.json();
-          if (uploadData.data?.path) filePaths.push(uploadData.data.path);
+          const uploaded = await uploadPatientFile(entry.file, { patientId, type: "report" });
+          filePaths.push(uploaded.path);
         }
 
         const rawText = combineTexts(group.files.map((f) => f.text));

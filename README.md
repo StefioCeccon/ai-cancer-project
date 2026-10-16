@@ -254,7 +254,7 @@ The public demo runs on Vercel + Neon + Cloudflare R2 + Clerk at [aicancerprojec
 1. Import the GitHub repo → **Root Directory:** `apps/web`
 2. Set env vars from `apps/web/.env.example` (including `DEMO_MODE=true` for seeding)
 3. Run `pnpm db:migrate` against the production database when schema changes (not automatic on deploy)
-4. Add your app origins to the R2 bucket CORS policy (e.g. `https://aicancerproject.com`, `https://www.aicancerproject.com`)
+4. Add your app origins to the R2 bucket CORS policy so browsers can **PUT** uploads directly (needed to bypass Vercel’s 4.5 MB function body limit). Example: allow `PUT`/`GET`/`HEAD` from `https://aicancerproject.com` and `https://www.aicancerproject.com`, with `Content-Type` in Allowed Headers.
 
 ---
 

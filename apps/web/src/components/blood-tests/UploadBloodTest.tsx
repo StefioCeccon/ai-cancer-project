@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
 import { classifyMarkerStatus, CANCER_MARKERS } from "@ai-cancer-project/shared";
 import type { MarkerStatus } from "@ai-cancer-project/shared";
+import { uploadPatientFile } from "@/lib/upload/uploadPatientFile";
 
 interface MarkerRow {
   name: string;
@@ -56,11 +57,21 @@ export function UploadBloodTest({ patientId, initialData, onSuccess, onCancel }:
     if (!file) return;
     setParseLoading(true);
     setParseWarning(null);
+    setError(null);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/blood-tests/parse", { method: "POST", body: formData });
+      const uploaded = await uploadPatientFile(file, { patientId, type: "bloodtest" });
+      const res = await fetch("/api/blood-tests/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          files: [{ path: uploaded.path, fileName: file.name }],
+        }),
+      });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : "Failed to parse file");
+      }
       if (data.rawText) setRawText(data.rawText);
       if (data.markers?.length) {
         setMarkers(data.markers.map((m: MarkerRow) => ({
@@ -72,12 +83,12 @@ export function UploadBloodTest({ patientId, initialData, onSuccess, onCancel }:
       if (data.testDate) setMeta((m) => ({ ...m, testDate: data.testDate }));
       if (data.labName) setMeta((m) => ({ ...m, labName: data.labName }));
       if (data.warning) setParseWarning(data.warning);
-    } catch {
-      setError("Failed to parse file");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to parse file");
     } finally {
       setParseLoading(false);
     }
-  }, []);
+  }, [patientId]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

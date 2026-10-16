@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseReportFile, extractReportMetadata } from "@/lib/upload/parseReportFile";
 import { getCurrentUserId } from "@/lib/auth/user";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
+import { resolveParseUploadFiles } from "@/lib/upload/resolveParseUploadFiles";
 
 export type { ParsedReportMetadata } from "@/lib/upload/parseReportFile";
 
@@ -12,13 +13,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized", success: false }, { status: 401 });
     }
 
-    const formData = await req.formData();
-    const files = formData.getAll("files") as File[];
-    const mode = formData.get("mode");
-
-    if (!files.length) {
-      return NextResponse.json({ error: "No files provided", success: false }, { status: 400 });
+    const resolved = await resolveParseUploadFiles(req, userId);
+    if ("error" in resolved) {
+      return NextResponse.json(
+        { error: resolved.error, success: false },
+        { status: resolved.status }
+      );
     }
+
+    const { files, mode } = resolved;
 
     return await runWithUserKeys(userId, async () => {
       if (mode === "individual") {

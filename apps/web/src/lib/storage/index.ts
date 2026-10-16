@@ -14,8 +14,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
  *     statically at `/uploads/...`. This is the self-host / local-dev behaviour and
  *     keeps existing local data and scans working untouched.
  *   - **r2**: Cloudflare R2 (S3-compatible). Activated automatically when the four
- *     R2 env vars are present (the live demo on Vercel). New uploads go to R2 and the
- *     browser streams files directly from R2 via short-lived signed URLs (zero egress).
+ *     R2 env vars are present (the live demo on Vercel). Browsers upload via short-lived
+ *     presigned PUT URLs (bypass Vercel body limits) and read via signed GET / proxy.
  *
  * Stored paths are kept identical across both backends (always `/uploads/...`), so
  * database rows are backend-agnostic and switching backends needs no data migration.
@@ -130,6 +130,30 @@ export async function getSignedReadUrl(
     new GetObjectCommand({ Bucket: bucket!, Key: toObjectKey(webPath) }),
     { expiresIn: expiresInSeconds },
   );
+}
+
+/**
+ * Short-lived signed PUT URL so the browser can upload directly to R2 and
+ * bypass the Vercel Functions 4.5 MB request-body limit.
+ */
+export async function createPresignedUploadUrl(
+  webPath: string,
+  contentType: string,
+  expiresInSeconds = 600,
+): Promise<{ uploadUrl: string; path: string }> {
+  if (storageBackend !== "r2") {
+    throw new Error("Presigned uploads require R2 storage");
+  }
+  const uploadUrl = await getSignedUrl(
+    r2(),
+    new PutObjectCommand({
+      Bucket: bucket!,
+      Key: toObjectKey(webPath),
+      ContentType: contentType,
+    }),
+    { expiresIn: expiresInSeconds },
+  );
+  return { uploadUrl, path: webPath };
 }
 
 export type ObjectResponse = {

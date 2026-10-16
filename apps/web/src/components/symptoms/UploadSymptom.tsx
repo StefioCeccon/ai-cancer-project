@@ -6,6 +6,7 @@ import { HeartPulse, Plus, Trash2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
 import type { SymptomSeverity } from "@ai-cancer-project/shared";
+import { uploadPatientFile } from "@/lib/upload/uploadPatientFile";
 
 interface SymptomRow {
   name: string;
@@ -69,19 +70,23 @@ export function UploadSymptom({ patientId, initialData, onSuccess, onCancel }: U
     if (!file) return;
     setParseLoading(true);
     setParseWarning(null);
+    setError(null);
     try {
-      const uploadForm = new FormData();
-      uploadForm.append("file", file);
-      uploadForm.append("type", "symptoms");
-      uploadForm.append("patientId", patientId);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadForm });
-      const uploadData = await uploadRes.json();
-      if (uploadData.data?.path) setFilePath(uploadData.data.path);
+      const uploaded = await uploadPatientFile(file, { patientId, type: "symptoms" });
+      setFilePath(uploaded.path);
 
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch("/api/symptoms/parse", { method: "POST", body: formData });
+      const res = await fetch("/api/symptoms/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          files: [{ path: uploaded.path, fileName: file.name }],
+        }),
+      });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : "Failed to parse file");
+      }
       if (data.rawText) setRawText(data.rawText);
       if (data.sourceTitle) setSourceTitle(data.sourceTitle);
       if (data.symptoms?.length) {
@@ -96,12 +101,12 @@ export function UploadSymptom({ patientId, initialData, onSuccess, onCancel }: U
         );
       }
       if (data.warning) setParseWarning(data.warning);
-    } catch {
-      setError("Failed to parse file");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to parse file");
     } finally {
       setParseLoading(false);
     }
-  }, []);
+  }, [patientId]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseBloodTestFile } from "@/lib/upload/parseBloodTestFile";
 import { getCurrentUserId } from "@/lib/auth/user";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
+import { resolveParseUploadFiles } from "@/lib/upload/resolveParseUploadFiles";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,20 +11,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized", success: false }, { status: 401 });
     }
 
-    const formData = await req.formData();
-    const mode = formData.get("mode");
+    const resolved = await resolveParseUploadFiles(req, userId);
+    if ("error" in resolved) {
+      return NextResponse.json(
+        { error: resolved.error, success: false },
+        { status: resolved.status }
+      );
+    }
+
+    const { files, mode } = resolved;
 
     return await runWithUserKeys(userId, async () => {
       if (mode === "individual") {
-        const files = formData.getAll("files") as File[];
-        if (!files.length) {
-          return NextResponse.json({ error: "No files provided", success: false }, { status: 400 });
-        }
         const results = await Promise.all(files.map((file) => parseBloodTestFile(file)));
         return NextResponse.json({ success: true, files: results });
       }
 
-      const file = formData.get("file") as File | null;
+      const file = files[0];
       if (!file) {
         return NextResponse.json({ error: "No file", success: false }, { status: 400 });
       }
