@@ -125,6 +125,35 @@
     "referral": "Referral",
     "other": "Other"
   },
+  "landing": {
+    "brand": "Cancer AI Project",
+    "headline": "Gather your oncology data. Follow it over time. Ask a panel of specialist AI agents.",
+    "support": "An open-source, self-hostable place for reports, blood markers, imaging, and multidisciplinary insight — built for patients, carers, and clinicians.",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "ctaPrimary": "Try the live demo",
+    "ctaSecondary": "Sign in",
+    "features": {
+      "mdt": {
+        "title": "MDT consultation",
+        "body": "A panel of specialist agents reviews the case in rounds, then the oncologist synthesises a recommendation — mirroring a real multidisciplinary meeting."
+      },
+      "imaging": {
+        "title": "Imaging over time",
+        "body": "Upload DICOM studies, browse series in the viewer, and keep scans alongside the rest of the clinical picture."
+      },
+      "markers": {
+        "title": "Markers & reports",
+        "body": "Track cancer markers and labs, store visit notes and pathology, and ask questions against the patient’s full record."
+      }
+    },
+    "oss": {
+      "title": "Open source. Self-host first.",
+      "body": "Run it on your own machine for privacy, or use the public demo to explore seeded sample data. Bring your own AI keys when you are ready.",
+      "cta": "View on GitHub"
+    },
+    "footer": "Not medical advice. Always confirm decisions with a qualified clinician."
+  },
   "analysis": {
     "title": "AI Analysis",
     "newAnalysis": "New Analysis",

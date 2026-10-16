@@ -8,10 +8,11 @@ import {
   RotateCcw, Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { ChatMessage, type Message } from "./ChatMessage";
+import { ChatMessage } from "./ChatMessage";
 import { AI_MODELS } from "@ai-cancer-project/shared";
 import type { AIProvider } from "@ai-cancer-project/shared";
 import { usePatient } from "@/contexts/PatientContext";
+import { useChat } from "@/contexts/ChatContext";
 
 const SUGGESTED_QUESTIONS = [
   "What do my recent blood test results mean?",
@@ -23,12 +24,19 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export function ChatSidebar() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const {
+    isOpen,
+    setIsOpen,
+    messages,
+    setMessages,
+    input,
+    setInput,
+    selectedModel,
+    setSelectedModel,
+    clearChat,
+  } = useChat();
   const [isStreaming, setIsStreaming] = useState(false);
   const { selectedPatientId, selectedPatient } = usePatient();
-  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash");
   const [showSettings, setShowSettings] = useState(false);
   const [configuredProviders, setConfiguredProviders] = useState<AIProvider[]>([]);
   const [, startTransition] = useTransition();
@@ -62,15 +70,15 @@ export function ChatSidebar() {
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isStreaming) return;
 
-    const userMessage: Message = {
+    const userMessage = {
       id: crypto.randomUUID(),
-      role: "user",
+      role: "user" as const,
       content: text.trim(),
     };
     const pendingId = crypto.randomUUID();
-    const pendingMessage: Message = {
+    const pendingMessage = {
       id: pendingId,
-      role: "assistant",
+      role: "assistant" as const,
       content: "",
       pending: true,
     };
@@ -146,14 +154,10 @@ export function ChatSidebar() {
       abortRef.current = null;
       inputRef.current?.focus();
     }
-  }, [isStreaming, messages, selectedPatientId, selectedModel]);
+  }, [isStreaming, messages, selectedPatientId, selectedModel, setMessages, setInput]);
 
   function stopStreaming() {
     abortRef.current?.abort();
-  }
-
-  function clearChat() {
-    setMessages([]);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {

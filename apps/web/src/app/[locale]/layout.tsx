@@ -8,7 +8,7 @@ import { ClientProviders } from "@/components/providers/ClientProviders";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Cancer Project",
+  title: "Cancer AI Project",
   description:
     "Self-hostable AI oncology platform — track blood markers and imaging over time, gather your reports, and get insight from a panel of specialist AI agents. Source available under a noncommercial license.",
 };
@@ -27,7 +27,7 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <ClerkProvider afterSignOutUrl="/sign-in">
+    <ClerkProvider afterSignOutUrl={`/${locale}`}>
       <html lang={locale}>
         <body>
           <NextIntlClientProvider messages={messages}>

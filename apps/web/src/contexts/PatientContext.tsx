@@ -8,6 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 const STORAGE_KEY = "ai-cancer-project:selected-patient-id";
 
@@ -30,6 +31,7 @@ interface PatientContextValue {
 const PatientContext = createContext<PatientContextValue | null>(null);
 
 export function PatientProvider({ children }: { children: ReactNode }) {
+  const { isSignedIn, isLoaded } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatientId, setSelectedPatientIdState] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,11 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshPatients = useCallback(async () => {
+    if (!isSignedIn) {
+      setPatients([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/patients");
@@ -57,11 +64,12 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSignedIn]);
 
   useEffect(() => {
+    if (!isLoaded) return;
     refreshPatients();
-  }, [refreshPatients]);
+  }, [isLoaded, refreshPatients]);
 
   const setSelectedPatientId = useCallback((id: string) => {
     setSelectedPatientIdState(id);

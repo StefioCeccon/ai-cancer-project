@@ -125,6 +125,35 @@
     "referral": "Richiesta di Consulenza",
     "other": "Altro"
   },
+  "landing": {
+    "brand": "Cancer AI Project",
+    "headline": "Raccogli i tuoi dati oncologici. Seguili nel tempo. Consulta un panel di agenti IA specialisti.",
+    "support": "Una piattaforma open-source e self-hostable per referti, marcatori, imaging e insight multidisciplinare — pensata per pazienti, caregiver e clinici.",
+    "signIn": "Accedi",
+    "signUp": "Registrati",
+    "ctaPrimary": "Prova la demo live",
+    "ctaSecondary": "Accedi",
+    "features": {
+      "mdt": {
+        "title": "Consulto MDT",
+        "body": "Un panel di specialisti IA esamina il caso a turni, poi l’oncologo sintetizza una raccomandazione — come in un vero meeting multidisciplinare."
+      },
+      "imaging": {
+        "title": "Imaging nel tempo",
+        "body": "Carica studi DICOM, esplora le serie nel viewer e tieni le scansioni insieme al resto del quadro clinico."
+      },
+      "markers": {
+        "title": "Marcatori e referti",
+        "body": "Monitora marcatori tumorali ed esami, archivia visite e anatomia patologica, e fai domande sull’intero fascicolo del paziente."
+      }
+    },
+    "oss": {
+      "title": "Open source. Self-host prima di tutto.",
+      "body": "Eseguila sulla tua macchina per la privacy, oppure usa la demo pubblica con dati di esempio. Quando vuoi, porta le tue chiavi AI.",
+      "cta": "Vedi su GitHub"
+    },
+    "footer": "Non è un consiglio medico. Conferma sempre le decisioni con un clinico qualificato."
+  },
   "analysis": {
     "title": "Analisi IA",
     "newAnalysis": "Nuova Analisi",

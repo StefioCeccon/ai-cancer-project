@@ -32,6 +32,36 @@ body {
   overflow-x: hidden;
 }
 
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.landing-fade-in,
+.landing-fade-in-delay-1,
+.landing-fade-in-delay-2,
+.landing-fade-in-delay-3 {
+  animation: landing-fade-up 0.7s ease-out both;
+}
+
+.landing-fade-in-delay-1 {
+  animation-delay: 0.12s;
+}
+
+.landing-fade-in-delay-2 {
+  animation-delay: 0.24s;
+}
+
+.landing-fade-in-delay-3 {
+  animation-delay: 0.36s;
+}
+
 /* DICOM viewer container */
 .dicom-viewport {
   background: #000;
