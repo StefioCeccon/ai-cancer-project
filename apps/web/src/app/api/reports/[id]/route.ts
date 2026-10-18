@@ -7,6 +7,7 @@ import { canAccessPatient } from "@/lib/auth/access";
 import { normalizeStoredTimelineCategory } from "@/lib/timeline/reportLanes";
 import { classifyReportTimelineCategory } from "@/lib/upload/classifyReportTimelineCategory";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
+import { sanitizeTextForDb } from "@/lib/upload/sanitizeTextForDb";
 
 const reportTypeSchema = z.enum([
   "visit_note",
@@ -114,6 +115,11 @@ export async function PATCH(
     } = parsed.data;
 
     const updates: Record<string, unknown> = { ...reportFields };
+    for (const key of ["title", "author", "institution", "rawText", "aiSummary"] as const) {
+      if (key in updates) {
+        updates[key] = sanitizeTextForDb(updates[key] as string | null | undefined);
+      }
+    }
 
     const manualFlag = (existing.extractedData as { timelineCategoryManual?: boolean } | null)
       ?.timelineCategoryManual;

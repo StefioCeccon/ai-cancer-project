@@ -7,6 +7,7 @@ import { classifyReportTimelineCategory } from "@/lib/upload/classifyReportTimel
 import { getCurrentUserId } from "@/lib/auth/user";
 import { canAccessPatient, getAccessiblePatientIds, inArray } from "@/lib/auth/access";
 import { runWithUserKeys } from "@/lib/ai/keyContext";
+import { sanitizeTextForDb } from "@/lib/upload/sanitizeTextForDb";
 
 const createReportSchema = z.object({
   patientId: z.string().uuid(),
@@ -118,6 +119,11 @@ export async function POST(request: NextRequest) {
       .insert(medicalReports)
       .values({
         ...parsed.data,
+        title: sanitizeTextForDb(parsed.data.title),
+        author: sanitizeTextForDb(parsed.data.author),
+        institution: sanitizeTextForDb(parsed.data.institution),
+        rawText: sanitizeTextForDb(parsed.data.rawText),
+        aiSummary: sanitizeTextForDb(parsed.data.aiSummary),
         userId,
         clinicalSpecialty: normalizeStoredTimelineCategory(category) ?? "",
       })
