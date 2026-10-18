@@ -125,6 +125,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: created, success: true }, { status: 201 });
   } catch (error) {
+    // Neon/Drizzle often put useful bits on cause / code / detail — log for Vercel Runtime Logs.
+    console.error("[POST /api/reports] insert failed", error);
+    if (error instanceof Error && error.cause) {
+      console.error("[POST /api/reports] cause", error.cause);
+    }
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message, success: false }, { status: 500 });
   }
