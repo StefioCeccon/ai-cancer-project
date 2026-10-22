@@ -2,7 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { after } from "next/server";
 import { cache } from "react";
 import { randomUUID } from "crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import {
   db,
   users,
@@ -58,16 +58,51 @@ export const getUserIdentity = cache(async (): Promise<UserIdentity | null> => {
     const user = await currentUser();
     const email = user?.emailAddresses?.[0]?.emailAddress ?? null;
 
-    const internalUserId = `usr_${randomUUID()}`;
-    await db
-      .insert(users)
-      .values({ id: internalUserId, clerkUserId, email })
-      .onConflictDoNothing({ target: users.clerkUserId });
+    // Same person can get a new Clerk user id when switching Clerk apps /
+    // test vs live keys while keeping the same email. Relink instead of
+    // inserting (email is UNIQUE and would 23505).
+    if (email) {
+      const byEmail = await db.query.users.findFirst({
+        where: eq(users.email, email),
+      });
+      if (byEmail) {
+        await db
+          .update(users)
+          .set({ clerkUserId })
+          .where(eq(users.id, byEmail.id));
+        row = { ...byEmail, clerkUserId };
+      }
+    }
 
-    row = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, clerkUserId),
-    });
-    if (!row) throw new Error("Failed to resolve user after insert");
+    if (!row) {
+      const internalUserId = `usr_${randomUUID()}`;
+      try {
+        await db
+          .insert(users)
+          .values({ id: internalUserId, clerkUserId, email })
+          .onConflictDoNothing({ target: users.clerkUserId });
+      } catch (e) {
+        // Race: another request created the email row first — fall through to re-resolve.
+        console.warn("[auth] user insert conflict, re-resolving", e);
+      }
+
+      row = await db.query.users.findFirst({
+        where: eq(users.clerkUserId, clerkUserId),
+      });
+      if (!row && email) {
+        row = await db.query.users.findFirst({
+          where: eq(users.email, email),
+        });
+        if (row && row.clerkUserId !== clerkUserId) {
+          await db
+            .update(users)
+            .set({ clerkUserId })
+            .where(eq(users.id, row.id));
+          row = { ...row, clerkUserId };
+        }
+      }
+      if (!row) throw new Error("Failed to resolve user after insert");
+    }
   }
 
   // Demo seed in after() so /api/imaging is not blocked, and Vercel keeps the

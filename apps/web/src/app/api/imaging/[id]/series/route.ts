@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, imagingStudies, imagingSeries, imagingInstances } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { join } from "path";
 import { checkMlService, listStudySeries } from "@/lib/ml/client";
 import { getCurrentUserId } from "@/lib/auth/user";
 import { canAccessPatient } from "@/lib/auth/access";
+import { ensureLocalObjects } from "@/lib/storage";
+
+/** First series discovery may download hundreds of DICOMs from R2 onto disk for ML. */
+export const maxDuration = 300;
 
 export async function GET(
   _request: NextRequest,
@@ -42,12 +45,12 @@ export async function GET(
     return NextResponse.json({ error: "No DICOM instances found", success: false }, { status: 400 });
   }
 
-  const instances = allInstances.map((inst) => ({
-    file_path: join(process.cwd(), "public", inst.filePath),
-    instance_number: inst.instanceNumber,
-  }));
-
   try {
+    const localPaths = await ensureLocalObjects(allInstances.map((inst) => inst.filePath));
+    const instances = allInstances.map((inst, i) => ({
+      file_path: localPaths[i]!,
+      instance_number: inst.instanceNumber,
+    }));
     const result = await listStudySeries(instances);
     return NextResponse.json({ data: result, success: true });
   } catch (error) {

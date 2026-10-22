@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, imagingStudies, imagingSeries, imagingInstances } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { join } from "path";
 import { checkMlService, getSegmentJobStatus, startSegmentJob } from "@/lib/ml/client";
 import { getCurrentUserId } from "@/lib/auth/user";
 import { canAccessPatient } from "@/lib/auth/access";
+import { ensureLocalObjects } from "@/lib/storage";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 async function loadInstances(studyId: string) {
   const series = await db.select().from(imagingSeries).where(eq(imagingSeries.studyId, studyId));
@@ -16,8 +16,9 @@ async function loadInstances(studyId: string) {
       ))).flat()
     : [];
 
-  return allInstances.map((inst) => ({
-    file_path: join(process.cwd(), "public", inst.filePath),
+  const localPaths = await ensureLocalObjects(allInstances.map((inst) => inst.filePath));
+  return allInstances.map((inst, i) => ({
+    file_path: localPaths[i]!,
     instance_number: inst.instanceNumber,
   }));
 }

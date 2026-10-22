@@ -37,7 +37,9 @@ async function ensureInit() {
       import("@cornerstonejs/dicom-image-loader"),
     ]);
     await cs.init();
-    (loader as unknown as { init: (o: object) => void }).init({ maxWebWorkers: 1 });
+    // A few workers so nearby slices can decode while scrolling (was 1 → felt like
+    // "only loads when I drag"). Keep modest to avoid saturating mobile CPUs.
+    (loader as unknown as { init: (o: object) => void }).init({ maxWebWorkers: 4 });
   })();
   return initPromise;
 }
@@ -60,6 +62,8 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
   const [currentIndex, setCurrentIndex] = useState(0);
   const [total, setTotal] = useState(filePaths.length);
   const [isLoading, setIsLoading] = useState(filePaths.length > 0);
+  /** False until `setStack` finishes for the active series — keep slider idle meanwhile. */
+  const [stackReady, setStackReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [flagOverrides, setFlagOverrides] = useState<Map<string, boolean>>(new Map());
   const [flagSaving, setFlagSaving] = useState(false);
@@ -68,6 +72,10 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const viewportRef = useRef<any>(null);
   const currentIndexRef = useRef(0);
+  const pendingSliceRef = useRef<number | null>(null);
+  const navigatingRef = useRef(false);
+  const stackReadyRef = useRef(false);
+  const totalRef = useRef(filePaths.length);
   const engineId = `engine-${studyId}`;
   const viewportId = `vp-${studyId}`;
 
@@ -292,19 +300,30 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
   useEffect(() => {
     setCurrentIndex(0);
     currentIndexRef.current = 0;
-  }, [selectedSeriesNumber]);
+    pendingSliceRef.current = null;
+    // Sync slider bounds immediately so we don't briefly use the previous series' length.
+    setTotal(filePaths.length);
+    totalRef.current = filePaths.length;
+    setStackReady(false);
+    stackReadyRef.current = false;
+  }, [selectedSeriesNumber, filePaths.length]);
 
   useEffect(() => {
     if (!containerRef.current || filePaths.length === 0) {
       setIsLoading(false);
+      setStackReady(false);
+      stackReadyRef.current = false;
       return;
     }
 
     let cancelled = false;
+    const element = containerRef.current;
 
     (async () => {
       try {
         setIsLoading(true);
+        setStackReady(false);
+        stackReadyRef.current = false;
         setError(null);
 
         await ensureInit();
@@ -312,8 +331,12 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
 
         const cs = await import("@cornerstonejs/core");
         const { RenderingEngine, Enums } = cs;
+        const { stackPrefetch } = await import("@cornerstonejs/tools/utilities");
 
         // Destroy any existing engine with this id
+        try {
+          stackPrefetch.disable(element);
+        } catch {}
         try { cs.getRenderingEngine(engineId)?.destroy(); } catch {}
 
         const engine = new RenderingEngine(engineId);
@@ -322,7 +345,7 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
           viewportId,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           type: (Enums as any).ViewportType?.STACK ?? "stack",
-          element: containerRef.current!,
+          element,
           defaultOptions: { background: [0, 0, 0] },
         });
 
@@ -333,26 +356,46 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
         const origin = window.location.origin;
         const imageIds = filePaths.map((p) => `wadouri:${origin}${p}`);
         setTotal(imageIds.length);
+        totalRef.current = imageIds.length;
 
         await viewport.setStack(imageIds, 0);
+        if (cancelled) return;
         viewport.render();
+
+        // Warm nearby (and remaining) stack images so slider scrubbing isn't a cold fetch each tick.
+        try {
+          stackPrefetch.enable(element);
+        } catch (prefetchErr) {
+          console.warn("Stack prefetch unavailable:", prefetchErr);
+        }
+
+        setStackReady(true);
+        stackReadyRef.current = true;
         setIsLoading(false);
       } catch (e) {
         if (!cancelled) {
           console.error("DicomViewer error:", e);
           setError(e instanceof Error ? e.message : "Failed to load DICOM images");
           setIsLoading(false);
+          setStackReady(false);
+          stackReadyRef.current = false;
         }
       }
     })();
 
     return () => {
       cancelled = true;
+      stackReadyRef.current = false;
+      import("@cornerstonejs/tools/utilities")
+        .then(({ stackPrefetch }) => {
+          try { stackPrefetch.disable(element); } catch {}
+        })
+        .catch(() => {});
       import("@cornerstonejs/core").then((cs) => {
         try { cs.getRenderingEngine(engineId)?.destroy(); } catch {}
       });
     };
-  // only re-run if the study changes
+  // only re-run if the study / series / paths change
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studyId, selectedSeriesNumber, filePaths.join(",")]);
 
@@ -365,35 +408,57 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
     }
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  // goToSlice is stable — no deps needed
+  // goToSlice is stable via refs — no deps needed
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function goToSlice(index: number) {
-    const vp = viewportRef.current;
-    if (!vp || total === 0) return;
+    if (!stackReadyRef.current || totalRef.current === 0) return;
 
-    // Walk in the requested direction, skipping frames without pixel data
-    const direction = index >= currentIndex ? 1 : -1;
-    let i = Math.max(0, Math.min(total - 1, index));
-    let attempts = 0;
+    pendingSliceRef.current = index;
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
 
-    while (attempts < total) {
-      try {
-        await vp.setImageIdIndex(i);
-        vp.render();
-        currentIndexRef.current = i;
-        setCurrentIndex(i);
-        return;
-      } catch (e) {
-        const msg = e instanceof Error ? e.message.toLowerCase() : "";
-        if (msg.includes("pixel data") || msg.includes("missing")) {
-          // Skip this frame in the travel direction
-          i = Math.max(0, Math.min(total - 1, i + direction));
-          attempts++;
-        } else {
-          return; // unexpected error — stop silently
+    try {
+      while (pendingSliceRef.current !== null) {
+        const requested = pendingSliceRef.current;
+        pendingSliceRef.current = null;
+
+        const vp = viewportRef.current;
+        if (!vp || !stackReadyRef.current) return;
+
+        const stackTotal = totalRef.current;
+        const direction = requested >= currentIndexRef.current ? 1 : -1;
+        let i = Math.max(0, Math.min(stackTotal - 1, requested));
+        let attempts = 0;
+
+        while (attempts < stackTotal) {
+          // A newer scrub target arrived — abandon this index and take the latest.
+          if (pendingSliceRef.current !== null) break;
+
+          try {
+            await vp.setImageIdIndex(i);
+            if (pendingSliceRef.current !== null) break;
+            vp.render();
+            currentIndexRef.current = i;
+            setCurrentIndex(i);
+            break;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message.toLowerCase() : "";
+            if (msg.includes("pixel data") || msg.includes("missing")) {
+              i = Math.max(0, Math.min(stackTotal - 1, i + direction));
+              attempts++;
+            } else {
+              return;
+            }
+          }
         }
+      }
+    } finally {
+      navigatingRef.current = false;
+      // If something queued while we were unwinding, run once more.
+      if (pendingSliceRef.current !== null && stackReadyRef.current) {
+        void goToSlice(pendingSliceRef.current);
       }
     }
   }
@@ -647,7 +712,9 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
             <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2" />
-            <span className="text-slate-400 text-sm">Loading {total} image{total !== 1 ? "s" : ""}…</span>
+            <span className="text-slate-400 text-sm">
+              Preparing series ({total} slice{total !== 1 ? "s" : ""})…
+            </span>
           </div>
         )}
         {error && !isLoading && (
@@ -663,19 +730,24 @@ export function DicomViewer({ studyId, seriesGroups, className }: DicomViewerPro
           <div className="flex items-center gap-3 bg-slate-800 rounded-lg px-3 py-2">
             <button
               onClick={() => goToSlice(currentIndex - 1)}
-              disabled={currentIndex === 0}
+              disabled={!stackReady || currentIndex === 0}
               className="p-1 text-slate-300 hover:text-white disabled:opacity-30"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <input
-              type="range" min={0} max={total - 1} value={currentIndex}
+              type="range" min={0} max={Math.max(0, total - 1)} value={currentIndex}
+              disabled={!stackReady}
               onChange={(e) => goToSlice(Number(e.target.value))}
-              className={cn("flex-1", isCurrentHighRisk ? "accent-purple-400" : "accent-blue-500")}
+              className={cn(
+                "flex-1",
+                !stackReady && "opacity-40 cursor-not-allowed",
+                isCurrentHighRisk ? "accent-purple-400" : "accent-blue-500",
+              )}
             />
             <button
               onClick={() => goToSlice(currentIndex + 1)}
-              disabled={currentIndex === total - 1}
+              disabled={!stackReady || currentIndex === total - 1}
               className="p-1 text-slate-300 hover:text-white disabled:opacity-30"
             >
               <ChevronRight className="w-5 h-5" />

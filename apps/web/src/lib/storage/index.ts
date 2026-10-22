@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { access, constants, mkdir, readFile, writeFile } from "fs/promises";
 import { dirname, join } from "path";
 import {
   GetObjectCommand,
@@ -89,6 +89,48 @@ export async function putObject(
   await mkdir(dirname(abs), { recursive: true });
   await writeFile(abs, body);
   return { path: webPath };
+}
+
+/**
+ * Ensure a stored web path exists as a real file under `public/`.
+ * When R2 is the backend (or the object only lives remotely), download once and
+ * cache on disk so the local ML service can open paths with `os.path.isfile`.
+ */
+export async function ensureLocalObject(webPath: string): Promise<string> {
+  const abs = toLocalPath(webPath);
+  try {
+    await access(abs, constants.R_OK);
+    return abs;
+  } catch {
+    // Missing locally — fetch from the configured backend and materialize.
+  }
+
+  const bytes = await getObjectBytes(webPath);
+  await mkdir(dirname(abs), { recursive: true });
+  await writeFile(abs, bytes);
+  return abs;
+}
+
+/** Concurrent `ensureLocalObject` for study-sized DICOM sets (hundreds of slices). */
+export async function ensureLocalObjects(
+  webPaths: string[],
+  concurrency = 12,
+): Promise<string[]> {
+  if (webPaths.length === 0) return [];
+  const results = new Array<string>(webPaths.length);
+  let next = 0;
+
+  async function worker() {
+    while (true) {
+      const idx = next++;
+      if (idx >= webPaths.length) return;
+      results[idx] = await ensureLocalObject(webPaths[idx]!);
+    }
+  }
+
+  const workers = Math.min(concurrency, webPaths.length);
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+  return results;
 }
 
 /** Read raw bytes for a stored web path (used by server-side DICOM→PNG conversion). */
