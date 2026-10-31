@@ -20,6 +20,7 @@ const updateBloodTestSchema = z.object({
   labName: z.string().optional().nullable(),
   requestingPhysician: z.string().optional().nullable(),
   rawText: z.string().optional().nullable(),
+  filePath: z.string().optional().nullable(),
   markers: z.array(markerSchema).optional(),
 });
 

@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
-import { FlaskConical, Plus, Trash2, Upload } from "lucide-react";
+import { useDropzone, type FileRejection } from "react-dropzone";
+import { FlaskConical, Plus, Trash2, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/Button";
 import { classifyMarkerStatus, CANCER_MARKERS } from "@ai-cancer-project/shared";
 import type { MarkerStatus } from "@ai-cancer-project/shared";
+import { mergeBloodMarkers, type ParsedBloodMarker } from "@/lib/upload/bloodMarkers";
+import { parseStoredFilePaths } from "@/lib/upload/parseStoredFilePaths";
 import { uploadPatientFile } from "@/lib/upload/uploadPatientFile";
 
 interface MarkerRow {
@@ -23,6 +25,7 @@ interface InitialData {
   labName?: string | null;
   requestingPhysician?: string | null;
   rawText?: string | null;
+  filePath?: string | null;
   markers: MarkerRow[];
 }
 
@@ -31,6 +34,25 @@ interface UploadBloodTestProps {
   initialData?: InitialData;
   onSuccess?: () => void;
   onCancel?: () => void;
+}
+
+type ParsedFileResult = {
+  fileName: string;
+  rawText: string;
+  markers: ParsedBloodMarker[];
+  testDate: string | null;
+  labName: string | null;
+  warning?: string;
+};
+
+function toMarkerRows(markers: ParsedBloodMarker[]): MarkerRow[] {
+  return markers.map((m) => ({
+    name: m.name,
+    value: String(m.value ?? ""),
+    unit: m.unit ?? "",
+    referenceMin: m.referenceMin != null ? String(m.referenceMin) : "",
+    referenceMax: m.referenceMax != null ? String(m.referenceMax) : "",
+  }));
 }
 
 export function UploadBloodTest({ patientId, initialData, onSuccess, onCancel }: UploadBloodTestProps) {
@@ -47,51 +69,94 @@ export function UploadBloodTest({ patientId, initialData, onSuccess, onCancel }:
       : [{ name: "", value: "", unit: "", referenceMin: "", referenceMax: "" }]
   );
   const [rawText, setRawText] = useState(initialData?.rawText ?? "");
+  const [existingFilePaths, setExistingFilePaths] = useState<string[]>(() =>
+    parseStoredFilePaths(initialData?.filePath)
+  );
+  const [uploadedFiles, setUploadedFiles] = useState<{ file: File; path: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [parseLoading, setParseLoading] = useState(false);
   const [parseWarning, setParseWarning] = useState<string | null>(null);
 
   const onDrop = useCallback(async (accepted: File[]) => {
-    const file = accepted[0];
-    if (!file) return;
+    if (!accepted.length) return;
     setParseLoading(true);
     setParseWarning(null);
     setError(null);
     try {
-      const uploaded = await uploadPatientFile(file, { patientId, type: "bloodtest" });
+      const uploaded = await Promise.all(
+        accepted.map(async (file) => {
+          const result = await uploadPatientFile(file, { patientId, type: "bloodtest" });
+          return { file, path: result.path };
+        })
+      );
+      setUploadedFiles((prev) => [...prev, ...uploaded]);
+
       const res = await fetch("/api/blood-tests/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           patientId,
-          files: [{ path: uploaded.path, fileName: file.name }],
+          mode: "individual",
+          files: uploaded.map((u) => ({ path: u.path, fileName: u.file.name })),
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(typeof data.error === "string" ? data.error : "Failed to parse file");
+        throw new Error(typeof data.error === "string" ? data.error : "Failed to parse files");
       }
-      if (data.rawText) setRawText(data.rawText);
-      if (data.markers?.length) {
-        setMarkers(data.markers.map((m: MarkerRow) => ({
-          ...m,
-          referenceMin: m.referenceMin ?? "",
-          referenceMax: m.referenceMax ?? "",
-        })));
+
+      const parsedFiles: ParsedFileResult[] = Array.isArray(data.files)
+        ? data.files
+        : [
+            {
+              fileName: accepted[0]!.name,
+              rawText: data.rawText ?? "",
+              markers: data.markers ?? [],
+              testDate: data.testDate ?? null,
+              labName: data.labName ?? null,
+              warning: data.warning,
+            },
+          ];
+
+      const mergedMarkers = mergeBloodMarkers(parsedFiles.map((f) => f.markers ?? []));
+      if (mergedMarkers.length) {
+        setMarkers(toMarkerRows(mergedMarkers));
       }
-      if (data.testDate) setMeta((m) => ({ ...m, testDate: data.testDate }));
-      if (data.labName) setMeta((m) => ({ ...m, labName: data.labName }));
-      if (data.warning) setParseWarning(data.warning);
+
+      const combinedRaw = parsedFiles
+        .map((f) => f.rawText?.trim())
+        .filter(Boolean)
+        .join("\n\n---\n\n");
+      if (combinedRaw) {
+        setRawText((prev) => (prev ? `${prev}\n\n---\n\n${combinedRaw}` : combinedRaw));
+      }
+
+      const testDate = parsedFiles.map((f) => f.testDate).find(Boolean);
+      const labName = parsedFiles.map((f) => f.labName).find(Boolean);
+      if (testDate) setMeta((m) => ({ ...m, testDate }));
+      if (labName) setMeta((m) => ({ ...m, labName }));
+
+      const warnings = parsedFiles.map((f) => f.warning).filter(Boolean);
+      if (warnings.length) setParseWarning(warnings.join(" · "));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to parse file");
+      setError(e instanceof Error ? e.message : "Failed to parse files");
     } finally {
       setParseLoading(false);
     }
   }, [patientId]);
 
+  const onDropRejected = useCallback((rejections: FileRejection[]) => {
+    if (!rejections.length) return;
+    const reasons = rejections.flatMap((r) =>
+      r.errors.map((e) => `${r.file.name}: ${e.message}`)
+    );
+    setError(reasons[0] ?? "File rejected");
+  }, []);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    onDropRejected,
     accept: {
       "application/pdf": [".pdf"],
       "text/plain": [".txt"],
@@ -99,7 +164,8 @@ export function UploadBloodTest({ patientId, initialData, onSuccess, onCancel }:
       "image/jpeg": [".jpg", ".jpeg"],
       "image/png": [".png"],
     },
-    maxFiles: 1,
+    multiple: true,
+    disabled: parseLoading,
   });
 
   function addMarker() {
@@ -135,6 +201,7 @@ export function UploadBloodTest({ patientId, initialData, onSuccess, onCancel }:
           };
         });
 
+      const filePaths = [...existingFilePaths, ...uploadedFiles.map((u) => u.path)];
       const payload = {
         patientId,
         testDate: meta.testDate,
@@ -142,6 +209,7 @@ export function UploadBloodTest({ patientId, initialData, onSuccess, onCancel }:
         requestingPhysician: meta.requestingPhysician || undefined,
         markers: validMarkers,
         rawText: rawText || undefined,
+        filePath: filePaths.length ? JSON.stringify(filePaths) : undefined,
       };
 
       const res = isEdit
@@ -191,18 +259,56 @@ export function UploadBloodTest({ patientId, initialData, onSuccess, onCancel }:
         {...getRootProps()}
         className={cn(
           "border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors",
+          parseLoading && "opacity-60 pointer-events-none",
           isDragActive ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300"
         )}
       >
         <input {...getInputProps()} />
         <p className="text-sm text-slate-500">
           {parseLoading
-            ? "Extracting markers with AI..."
+            ? `Extracting markers with AI from ${uploadedFiles.length || "your"} file(s)...`
             : isEdit
-            ? "Drop a new PDF/TXT/CSV/JPG/PNG to re-parse, or edit markers below"
-            : "Drop PDF/TXT/CSV/JPG/PNG — AI will extract markers automatically"}
+            ? "Drop PDF/TXT/CSV/JPG/PNG files to add pages and re-parse, or edit markers below"
+            : "Drop one or more PDF/TXT/CSV/JPG/PNG files — AI will extract and merge markers"}
         </p>
       </div>
+
+      {(existingFilePaths.length > 0 || uploadedFiles.length > 0) && (
+        <ul className="space-y-1">
+          {existingFilePaths.map((path, i) => (
+            <li
+              key={`existing-${path}`}
+              className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600"
+            >
+              <span className="truncate">{path.split("/").pop()}</span>
+              <button
+                type="button"
+                onClick={() => setExistingFilePaths((prev) => prev.filter((_, idx) => idx !== i))}
+                className="text-slate-400 hover:text-red-500"
+                aria-label="Remove file"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </li>
+          ))}
+          {uploadedFiles.map((entry, i) => (
+            <li
+              key={`${entry.path}-${i}`}
+              className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-600"
+            >
+              <span className="truncate">{entry.file.name}</span>
+              <button
+                type="button"
+                onClick={() => setUploadedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                className="text-slate-400 hover:text-red-500"
+                aria-label="Remove file"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* Raw text */}
       {rawText && (

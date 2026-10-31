@@ -341,6 +341,7 @@ export default function BloodTestsPage() {
                       labName: test.labName,
                       requestingPhysician: test.requestingPhysician,
                       rawText: test.rawText,
+                      filePath: test.filePath,
                       markers: test.markers.map((m) => ({
                         name: m.name,
                         value: String(m.value),
