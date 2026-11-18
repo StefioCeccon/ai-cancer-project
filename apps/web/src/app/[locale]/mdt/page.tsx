@@ -454,6 +454,11 @@ export default function MDTPage() {
 
   const startConsultation = useCallback(async () => {
     if (!selectedPatientId) return;
+    if (!model.trim()) {
+      setErrorMessage("Enter a model name before starting the consultation.");
+      setPhase("error");
+      return;
+    }
     resetState();
 
     try {
@@ -463,16 +468,17 @@ export default function MDTPage() {
         body: JSON.stringify({
           patientId: selectedPatientId,
           provider,
-          model,
+          model: model.trim(),
           question: consultationQuestion.trim() || undefined,
         }),
       });
 
-      if (!response.ok || !response.body) throw new Error("Failed to start MDT consultation");
+      if (!response.body) throw new Error("Failed to start MDT consultation");
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let sawTerminalEvent = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -486,9 +492,15 @@ export default function MDTPage() {
           if (!line.startsWith("data: ")) continue;
           try {
             const parsed: MDTSSEEvent = JSON.parse(line.slice(6));
+            if (parsed.type === "error" || parsed.type === "done") sawTerminalEvent = true;
             handleEvent(parsed);
           } catch { /* skip malformed */ }
         }
+      }
+
+      // Non-OK responses still stream an SSE error event — prefer that message.
+      if (!response.ok && !sawTerminalEvent) {
+        throw new Error(`Failed to start MDT consultation (${response.status})`);
       }
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Consultation failed");
@@ -613,12 +625,18 @@ export default function MDTPage() {
                 </label>
                 <textarea
                   value={consultationQuestion}
-                  onChange={e => setConsultationQuestion(e.target.value)}
+                  onChange={e => setConsultationQuestion(e.target.value.slice(0, 4000))}
                   disabled={isRunning}
                   rows={2}
+                  maxLength={4000}
                   placeholder="e.g. Is the patient a candidate for immunotherapy? Should we reconsider the current chemotherapy regimen given the latest bloods?"
                   className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 resize-none placeholder:text-slate-400"
                 />
+                {consultationQuestion.length > 0 && (
+                  <p className="text-[11px] text-slate-400 mt-1 text-right">
+                    {consultationQuestion.length}/4000
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center justify-between gap-4 flex-wrap">

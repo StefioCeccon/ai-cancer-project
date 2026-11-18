@@ -25,11 +25,21 @@ const schema = z.object({
   patientId: z.string().uuid(),
   provider: z.enum(["gemini", "openai", "anthropic", "mistral"]),
   model: z.string().min(1),
-  question: z.string().max(500).optional(),
+  // Optional clinical question — keep generous; MDT prompts are often long.
+  question: z.string().max(4000).optional(),
 });
 
 function sseEncode(event: MDTSSEEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
+}
+
+function formatZodError(error: z.ZodError): string {
+  return error.issues
+    .map((issue) => {
+      const path = issue.path.length ? issue.path.join(".") : "request";
+      return `${path}: ${issue.message}`;
+    })
+    .join("; ");
 }
 
 export async function POST(request: NextRequest) {
@@ -42,8 +52,9 @@ export async function POST(request: NextRequest) {
   const parsed = schema.safeParse(body);
 
   if (!parsed.success) {
+    const message = formatZodError(parsed.error);
     return new Response(
-      sseEncode({ type: "error", message: "Invalid request" }),
+      sseEncode({ type: "error", message: `Invalid request — ${message}` }),
       { status: 400, headers: { "Content-Type": "text/event-stream" } }
     );
   }
